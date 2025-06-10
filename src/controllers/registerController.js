@@ -4,19 +4,17 @@ import bcrypt from "bcryptjs";
 import fs from 'fs';
 import path from "path";
 
-// Create new trainer
+// Create new user
 export const createRegister = async (req, res) => {
     try {
         const { name, contact, email, birth_date, password, type } = req.body;
 
-        // Validate required fields
         if (!name || !contact || !email || !birth_date || !password || !type) {
             return res.status(400).json({
                 message: "All fields are required"
             });
         }
 
-        // Validate birth date format
         const birthDate = new Date(birth_date);
         if (isNaN(birthDate.getTime())) {
             return res.status(400).json({
@@ -24,7 +22,6 @@ export const createRegister = async (req, res) => {
             });
         }
 
-        // Check if email already exists
         const existingTrainer = await Register.findOne({ email });
         if (existingTrainer) {
             return res.status(400).json({
@@ -40,7 +37,8 @@ export const createRegister = async (req, res) => {
             email,
             birth_date: birthDate,
             password: hashedPassword,
-            type
+            type,
+            isAdmin: type === 'trainer'
         });
 
         res.status(201).json({
@@ -52,16 +50,21 @@ export const createRegister = async (req, res) => {
     }
 };
 
-// Get single trainer by ID
+// Get single user by ID
 export const getRegisterById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const register = await Register.findById(id);
+        let query = { _id: id };
+        if (!req.trainer.isAdmin && req.trainer._id.toString() !== id) {
+            return res.status(403).json({ message: "Access denied. You can only view your own profile." });
+        }
+
+        const register = await Register.findOne(query);
 
         if (!register) {
             return res.status(404).json({
-                message: "Trainer not found"
+                message: "Member not found"
             });
         }
 
@@ -73,17 +76,21 @@ export const getRegisterById = async (req, res) => {
     }
 };
 
-// Get all trainers
+// Get all users
 export const getAllRegister = async (req, res) => {
     try {
-        const registers = await Register.find();
+        let query = {};
+        if (!req.trainer.isAdmin) {
+            return res.status(403).json({ message: "Access denied. Only trainers can view all members." });
+        }
+        const registers = await Register.find(query);
 
         if (!registers || registers.length === 0) {
-            return res.status(200).json({ message: "No any trainer found!!" })
+            return res.status(200).json({ message: "No any member found!!" })
         }
 
         return res.status(200).json({
-            message: "Trainers fetched successfully",
+            message: "Members fetched successfully",
             data: registers
         });
 
@@ -92,26 +99,27 @@ export const getAllRegister = async (req, res) => {
     }
 };
 
-// Update trainer
+// Update user
 export const updateRegister = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, contact, birth_date } = req.body;
 
-        // First check if trainer exists
+        if (!req.trainer.isAdmin && req.trainer._id.toString() !== id) {
+            return res.status(403).json({ message: "Access denied. You can only update your own profile." });
+        }
+
         const existingTrainer = await Register.findById(id);
         if (!existingTrainer) {
-            // If file was uploaded but trainer not found, delete the uploaded file
             if (req.file) {
                 const filePath = path.resolve(req.file.path);
                 if (fs.existsSync(filePath)) {
                     fs.unlinkSync(filePath);
                 }
             }
-            return ThrowError(res, 404, "Trainer not found");
+            return ThrowError(res, 404, "Member not found");
         }
 
-        // If trainer exists, proceed with update
         const newImagePath = req.file?.path;
 
         if (name) {
@@ -137,7 +145,6 @@ export const updateRegister = async (req, res) => {
         }
 
         if (newImagePath) {
-            // Delete old image if exists
             if (existingTrainer.trainer_image) {
                 const oldImagePath = path.resolve(existingTrainer.trainer_image);
                 if (fs.existsSync(oldImagePath)) {
@@ -150,11 +157,10 @@ export const updateRegister = async (req, res) => {
         await existingTrainer.save();
 
         return res.status(200).json({
-            message: "Trainer updated successfully",
+            message: "Member updated successfully",
             data: existingTrainer
         });
     } catch (error) {
-        // If any error occurs and file was uploaded, delete it
         if (req.file) {
             const filePath = path.resolve(req.file.path);
             if (fs.existsSync(filePath)) {
@@ -165,16 +171,15 @@ export const updateRegister = async (req, res) => {
     }
 };
 
-// Delete trainer
+// Delete user
 export const deleteRegister = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Check if Trainer exists
         const existingTrainer = await Register.findById(id);
         if (!existingTrainer) {
             return res.status(404).json({
-                message: "Trainer not found"
+                message: "Member not found"
             });
         }
 
@@ -189,7 +194,7 @@ export const deleteRegister = async (req, res) => {
         await Register.findByIdAndDelete(id);
 
         res.status(200).json({
-            message: "Trainer deleted successfully"
+            message: "Member deleted successfully"
         });
     } catch (error) {
         return ThrowError(res, 500, error.message)

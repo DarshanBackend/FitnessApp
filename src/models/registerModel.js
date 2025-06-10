@@ -22,7 +22,11 @@ const registerSchema = mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ["trainer", "user"]
+        enum: ["trainer", "member"]
+    },
+    isAdmin: {
+        type: Boolean,
+        default: false
     },
     resetOTP: {
         type: Number

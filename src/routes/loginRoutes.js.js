@@ -1,15 +1,15 @@
 import express from 'express';
-import { changetrainerPassword, forgottrainerPassword, loginTrainer, logoutTrainer, resetPassword, VerifyEmail } from '../controllers/loginController.js';
+import { changePassword, forgotPassword, loginUser, logoutUser, resetPassword, VerifyEmail } from '../controllers/loginController.js';
 import { TrainerAuth } from '../middlewares/auth.js';
 
 const loginRouter = express.Router();
 
-loginRouter.post('/loginTrainer', loginTrainer);
-loginRouter.post('/forgottrainerPassword', TrainerAuth, forgottrainerPassword);
-loginRouter.post('/VerifyEmail', TrainerAuth, VerifyEmail);
-loginRouter.post('/resetPassword', TrainerAuth, resetPassword);
-loginRouter.post('/changetrainerPassword/:id', TrainerAuth, changetrainerPassword);
-loginRouter.post('/logoutTrainer', TrainerAuth, logoutTrainer);
+loginRouter.post('/loginUser', loginUser);
+loginRouter.post('/forgotPassword', forgotPassword);
+loginRouter.post('/VerifyEmail', VerifyEmail);
+loginRouter.post('/resetPassword', resetPassword);
+loginRouter.post('/changePassword/:id', TrainerAuth, changePassword);
+loginRouter.post('/logoutUser', TrainerAuth, logoutUser);
 
 
 export default loginRouter; 

@@ -1,12 +1,11 @@
 import Register from "../models/registerModel.js";
 import { ThrowError } from "../utils/ErrorUtils.js"
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer"
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-export const loginTrainer = async (req, res) => {
+export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -14,24 +13,22 @@ export const loginTrainer = async (req, res) => {
             return res.status(400).json({ message: "Email and password are required" });
         }
 
-        // Search trainer by email
-        const trainer = await Register.findOne({ email: email.toLowerCase() });
-        if (!trainer) {
-            return res.status(404).json({ message: "trainer not found" });
+        const user = await Register.findOne({ email: email.toLowerCase() });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
 
         // Validate password
-        const isPasswordValid = await bcrypt.compare(password, trainer.password);
+        const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({ message: "Invalid password" });
         }
 
         // Generate JWT token
-        const token = await trainer.getJWT();
+        const token = await user.getJWT();
         if (!token) {
             return res.status(500).json({ message: "Failed to generate token" });
         }
-
 
         // Set token in cookie
         res.cookie("token", token, {
@@ -39,14 +36,13 @@ export const loginTrainer = async (req, res) => {
             expires: new Date(Date.now() + 8 * 3600000), // 8 hours
         });
 
-        // Send success response
         return res.status(200).json({
             message: "Login successful",
-            trainer: {
-                id: trainer._id,
-                name: trainer.name,
-                email: trainer.email,
-                type: trainer.type
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                type: user.type
             },
         });
 
@@ -56,24 +52,23 @@ export const loginTrainer = async (req, res) => {
 };
 
 //forgot password
-export const forgottrainerPassword = async (req, res) => {
+export const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) {
             return res.status(400).json({ message: "Provide Email Id" });
         }
 
-        const trainer = await Register.findOne({ email: email })
-        if (!trainer) {
-            return res.status(400).json({ message: "Trainer Not Found" });
+        const user = await Register.findOne({ email: email })
+        if (!user) {
+            return res.status(400).json({ message: "User Not Found" });
         }
 
         const otp = generateOTP();
-        trainer.resetOTP = otp;
-        trainer.otpExpires = Date.now() + 10 * 60 * 1000; // valid 10 minutes
-        await trainer.save();
+        user.resetOTP = otp;
+        user.otpExpires = Date.now() + 10 * 60 * 1000; // valid 10 minutes
+        await user.save();
 
-        // Nodemailer setup
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
@@ -86,8 +81,8 @@ export const forgottrainerPassword = async (req, res) => {
         const mailOptions = {
             from: process.env.MY_GMAIL,
             to: email,
-            subject: "trainer Password Reset OTP",
-            text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
+            subject: "Password Reset OTP",
+            text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`, // Changed from trainer Password Reset OTP
         };
 
         await transporter.sendMail(mailOptions);
@@ -109,17 +104,16 @@ export const VerifyEmail = async (req, res) => {
                 .json({ message: "Please provide email and OTP." });
         }
 
-        const trainer = await Register.findOne({ email: email });
-        if (!trainer) {
-            return res.status(404).json({ message: "trainer not found." });
+        const user = await Register.findOne({ email: email });
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
         }
 
-        // Validate OTP
-        if (trainer.resetOTP !== otp || trainer.otpExpires < Date.now()) {
+        if (user.resetOTP !== otp || user.otpExpires < Date.now()) {
             return res.status(400).json({ message: "Invalid or expired OTP." });
         }
 
-        await trainer.save();
+        await user.save();
 
         return res.status(200).json({
             message: "OTP Submitted successfully."
@@ -140,9 +134,9 @@ export const resetPassword = async (req, res) => {
                 .json({ message: "Please provide email , newpassword and confirmpassword." });
         }
 
-        const trainer = await Register.findOne({ email: email });
-        if (!trainer) {
-            return res.status(400).json({ message: "trainer Not Found" });
+        const user = await Register.findOne({ email: email });
+        if (!user) {
+            return res.status(400).json({ message: "User Not Found" });
         }
 
         if (!(newPassword === confirmPassword)) {
@@ -151,24 +145,23 @@ export const resetPassword = async (req, res) => {
                 .json({ message: "Please check newpassword and confirmpassword." });
         }
 
-        // Hash new password
         await Register.findOne({ password: newPassword });
-        trainer.password = await bcrypt.hash(newPassword, 10);
-        trainer.resetOTP = undefined;
-        trainer.otpExpires = undefined;
-        await trainer.save();
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.resetOTP = undefined;
+        user.otpExpires = undefined;
+        await user.save();
 
         return res.status(200).json({
             message: "Password reset successfully.",
-            trainer: { id: trainer._id, email: trainer.email },
+            user: { id: user._id, email: user.email },
         });
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
 };
 
-// Change Password for trainer
-export const changetrainerPassword = async (req, res) => {
+// Change Password for user
+export const changePassword = async (req, res) => {
     try {
         const { id } = req.params;
         const { oldPassword, newPassword, confirmPassword } = req.body;
@@ -179,14 +172,14 @@ export const changetrainerPassword = async (req, res) => {
             });
         }
 
-        const trainer = await Register.findById(id);
-        if (!trainer) {
+        const user = await Register.findById(id);
+        if (!user) {
             return res.status(404).json({
-                message: "Trainer not found with the provided ID"
+                message: "User not found with the provided ID"
             });
         }
 
-        const isMatch = await bcrypt.compare(oldPassword, trainer.password);
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: "Current password is incorrect." });
         }
@@ -204,8 +197,8 @@ export const changetrainerPassword = async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        trainer.password = hashedPassword;
-        await trainer.save();
+        user.password = hashedPassword;
+        await user.save();
 
         return res.status(200).json({ message: "Password changed successfully." });
 
@@ -214,12 +207,12 @@ export const changetrainerPassword = async (req, res) => {
     }
 };
 
-//logoutTrainer
-export const logoutTrainer = async (req, res) => {
+//logoutUser
+export const logoutUser = async (req, res) => {
     try {
         res.cookie("token", null, { expires: new Date(Date.now()) });
 
-        res.send("Trainer logout successfully...✅");
+        res.send("User logout successfully...✅");
     } catch (error) {
         res.status(400).send("ERROR: " + error.message);
     }
