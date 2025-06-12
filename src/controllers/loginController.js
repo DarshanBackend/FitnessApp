@@ -195,3 +195,5 @@ export const logoutUser = async (req, res) => {
         return sendErrorResponse(res, 400, error.message);
     }
 };
+
+

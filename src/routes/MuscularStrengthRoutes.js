@@ -7,16 +7,17 @@ import {
     deletemuscularStrength,
 } from "../controllers/MuscularStrengthController.js";
 import { TrainerAuth, isAdmin } from "../middlewares/auth.js";
+import { checkMemberAccess } from "../middlewares/accessControl.js";
 
 const muscularStrengthRouter = express.Router();
 
-// Only trainers can add, update, and delete
-muscularStrengthRouter.post("/addmuscularStrength", TrainerAuth, isAdmin, addmuscularStrength);
-muscularStrengthRouter.put("/updatemuscularStrength/:id", TrainerAuth, isAdmin, updatemuscularStrength);
-muscularStrengthRouter.delete("/deletemuscularStrength/:id", TrainerAuth, isAdmin, deletemuscularStrength);
+// Only trainers can add, update, delete, and view all muscular strength records
+muscularStrengthRouter.post("/addMuscularStrength", TrainerAuth, isAdmin, addmuscularStrength);
+muscularStrengthRouter.put("/updateMuscularStrength/:id", TrainerAuth, isAdmin, updatemuscularStrength);
+muscularStrengthRouter.delete("/deleteMuscularStrength/:id", TrainerAuth, isAdmin, deletemuscularStrength);
+muscularStrengthRouter.get("/getAllMuscularStrength", TrainerAuth, isAdmin, getAllmuscularStrength);
 
-// Both trainers and members can view
-muscularStrengthRouter.get("/getmuscularStrengthById/:id", TrainerAuth, getmuscularStrengthById);
-muscularStrengthRouter.get("/getAllmuscularStrength", TrainerAuth, getAllmuscularStrength);
+// Members can only view their own muscular strength records
+muscularStrengthRouter.get("/getMuscularStrengthById/:id", TrainerAuth, checkMemberAccess, getmuscularStrengthById);
 
 export default muscularStrengthRouter;

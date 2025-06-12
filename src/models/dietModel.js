@@ -4,7 +4,6 @@ const dietSchema = new mongoose.Schema({
     day: {
         type: String,
         required: true,
-        unique: true,
         enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
     },
     memberId: {
@@ -31,5 +30,8 @@ const dietSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+// Create a compound unique index for day and memberId
+dietSchema.index({ day: 1, memberId: 1 }, { unique: true });
 
 export default mongoose.model("Diet", dietSchema);

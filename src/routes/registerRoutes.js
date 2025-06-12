@@ -4,7 +4,8 @@ import {
     getRegisterById,
     getAllRegister,
     updateRegister,
-    deleteRegister
+    deleteRegister,
+    getAllMembers
 } from '../controllers/registerController.js';
 import upload, { convertJfifToJpeg } from '../middlewares/imageupload.js';
 import { TrainerAuth, isAdmin } from '../middlewares/auth.js';
@@ -16,6 +17,9 @@ registerRouter.get('/getRegisterById/:id', TrainerAuth, getRegisterById);
 registerRouter.get('/getAllRegister', TrainerAuth, getAllRegister);
 registerRouter.put('/updateRegister/:id', TrainerAuth, upload.single("trainer_image"), convertJfifToJpeg, updateRegister);
 registerRouter.delete('/deleteRegister/:id', TrainerAuth, deleteRegister);
+
+
+registerRouter.get('/getAllMembers', TrainerAuth, isAdmin, getAllMembers);
 
 
 export default registerRouter; 

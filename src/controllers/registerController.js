@@ -177,3 +177,31 @@ export const deleteRegister = async (req, res) => {
     }
 };
 
+
+export const getAllMembers = async (req, res) => {
+    try {
+        // --- Access Control: Only allow trainers to view all members ---
+        if (!req.trainer.isAdmin) {
+            // If the logged-in user is NOT an admin (i.e., they are a member),
+            // they are forbidden from accessing this list.
+            return sendForbiddenResponse(res, "Access denied. Only trainers can view all members.");
+        }
+        // ---------------------------------------------------------------
+
+        // Find all users where the 'type' field is 'member'
+        const members = await Register.find({ type: 'member' });
+
+        // Check if any members were found
+        if (!members || members.length === 0) {
+            return sendSuccessResponse(res, "No members found", []);
+        }
+
+        // Send a success response with the fetched members
+        return sendSuccessResponse(res, "Members fetched successfully", members);
+
+    } catch (error) {
+        // Handle any errors that occur during the process
+        // (e.g., database connection issues, server errors)
+        return ThrowError(res, 500, error.message)
+    }
+};

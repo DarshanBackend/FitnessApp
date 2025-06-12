@@ -1,7 +1,7 @@
 import WorkoutModel from '../models/workoutModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
-import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse, sendForbiddenResponse } from '../utils/ResponseUtils.js';
 
 // Add a new workout
 export const addWorkout = async (req, res) => {
@@ -20,6 +20,7 @@ export const addWorkout = async (req, res) => {
             memberId = req.trainer._id;
         }
 
+ 
         const newWorkout = new WorkoutModel({
             ...req.body,
             memberId: memberId
@@ -27,26 +28,25 @@ export const addWorkout = async (req, res) => {
         const savedWorkout = await newWorkout.save();
         return sendCreatedResponse(res, "Workout added successfully", savedWorkout);
     } catch (error) {
+        console.error("Error adding workout record:", error);
         return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single workout by ID
 export const getWorkoutById = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid Workout ID");
-    }
     try {
-        let query = { _id: req.params.id };
-        if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id;
-        }
-        const workout = await WorkoutModel.findOne(query);
+     
+        const workout = await WorkoutModel.findOne({ memberId: req.member._id });
+      
+        
         if (!workout) {
-            return sendNotFoundResponse(res, "Workout not found or you do not have permission to view it.");
+            return sendNotFoundResponse(res, "Workout not found");
         }
+
         return sendSuccessResponse(res, "Workout retrieved successfully", workout);
     } catch (error) {
+        console.error('Error getting workout record:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
@@ -58,6 +58,9 @@ export const getAllWorkout = async (req, res) => {
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
+
+       
+
         const workouts = await WorkoutModel.find(query).sort({ createdAt: -1 });
 
         if (!workouts || workouts.length === 0) {
@@ -73,6 +76,7 @@ export const getAllWorkout = async (req, res) => {
 
         return sendSuccessResponse(res, "Workouts retrieved successfully", formattedWorkouts);
     } catch (error) {
+        console.error("Error retrieving all workout records:", error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
@@ -87,6 +91,9 @@ export const updateWorkout = async (req, res) => {
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
+
+       
+
         const updatedWorkout = await WorkoutModel.findOneAndUpdate(
             query,
             req.body,
@@ -97,6 +104,7 @@ export const updateWorkout = async (req, res) => {
         }
         return sendSuccessResponse(res, "Workout updated successfully", updatedWorkout);
     } catch (error) {
+        console.error("Error updating workout record:", error);
         return sendErrorResponse(res, 400, error.message);
     }
 };
@@ -111,12 +119,16 @@ export const deleteWorkout = async (req, res) => {
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
+
+     
+
         const deletedWorkout = await WorkoutModel.findOneAndDelete(query);
         if (!deletedWorkout) {
             return sendNotFoundResponse(res, "Workout not found or you do not have permission to delete it.");
         }
         return sendSuccessResponse(res, "Workout deleted successfully");
     } catch (error) {
+        console.error("Error deleting workout record:", error);
         return sendErrorResponse(res, 500, error.message);
     }
 }; 

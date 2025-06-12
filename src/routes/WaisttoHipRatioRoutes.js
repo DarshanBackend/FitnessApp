@@ -1,16 +1,23 @@
 import express from "express";
-import { addWaisttoHipRatio, getWaisttoHipRatioById, getAllWaisttoHipRatio, updateWaisttoHipRatio, deleteWaisttoHipRatio } from "../controllers/WaisttoHipRatioController.js";
+import {
+    addWaisttoHipRatio,
+    getWaisttoHipRatioById,
+    getAllWaisttoHipRatio,
+    updateWaisttoHipRatio,
+    deleteWaisttoHipRatio,
+} from "../controllers/WaisttoHipRatioController.js";
 import { TrainerAuth, isAdmin } from "../middlewares/auth.js";
+import { checkMemberAccess } from "../middlewares/accessControl.js";
 
-const WaisttoHipRatioRouter = express.Router();
+const waisttoHipRatioRouter = express.Router();
 
-// Only trainers can add, update, and delete
-WaisttoHipRatioRouter.post("/addWaisttoHipRatio", TrainerAuth, isAdmin, addWaisttoHipRatio);
-WaisttoHipRatioRouter.put("/updateWaisttoHipRatio/:id", TrainerAuth, isAdmin, updateWaisttoHipRatio);
-WaisttoHipRatioRouter.delete("/deleteWaisttoHipRatio/:id", TrainerAuth, isAdmin, deleteWaisttoHipRatio);
+// Only trainers can add, update, delete, and view all waist to hip ratio records
+waisttoHipRatioRouter.post("/addWaisttoHipRatio", TrainerAuth, isAdmin, addWaisttoHipRatio);
+waisttoHipRatioRouter.put("/updateWaisttoHipRatio/:id", TrainerAuth, isAdmin, updateWaisttoHipRatio);
+waisttoHipRatioRouter.delete("/deleteWaisttoHipRatio/:id", TrainerAuth, isAdmin, deleteWaisttoHipRatio);
+waisttoHipRatioRouter.get("/getAllWaisttoHipRatio", TrainerAuth, isAdmin, getAllWaisttoHipRatio);
 
-// Both trainers and members can view
-WaisttoHipRatioRouter.get("/getWaisttoHipRatioById/:id", TrainerAuth, getWaisttoHipRatioById);
-WaisttoHipRatioRouter.get("/getAllWaisttoHipRatio", TrainerAuth, getAllWaisttoHipRatio);
+// Members can only view their own waist to hip ratio records
+waisttoHipRatioRouter.get("/getWaisttoHipRatioById/:id", TrainerAuth, checkMemberAccess, getWaisttoHipRatioById);
 
-export default WaisttoHipRatioRouter;
+export default waisttoHipRatioRouter;

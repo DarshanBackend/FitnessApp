@@ -6,38 +6,63 @@ import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNot
 // Add a new leave request (Member Only)
 export const addLeave = async (req, res) => {
     try {
+        // Only members can add leave requests
         if (req.trainer.isAdmin) {
             return sendForbiddenResponse(res, "Trainers cannot add leave requests.");
         }
 
+        // Validate required fields
+        if (!req.body.date || !req.body.reason) {
+            return sendBadRequestResponse(res, "date and reason are required");
+        }
+      
+        // Create new leave request with status Pending
         const newLeave = new LeaveModel({
-            ...req.body,
-            memberId: req.trainer._id,
+            date: req.body.date,
+            reason: req.body.reason,
+            status: "Pending", // Default status
+            memberId: req.trainer._id, // Use logged in member's ID
         });
+
         const savedLeave = await newLeave.save();
+    
         return sendCreatedResponse(res, "Leave request added successfully", savedLeave);
     } catch (error) {
+        console.error('Error adding leave request:', error);
         return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single leave request by ID (Both Trainers and Members)
 export const getLeaveById = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    const leaveId = req.params.id; // This is the ID from the URL parameter
+ 
+    if (!mongoose.Types.ObjectId.isValid(leaveId)) {
+        
         return sendBadRequestResponse(res, "Invalid Leave ID");
     }
+
     try {
-        let query = { _id: req.params.id };
+        let query = { _id: leaveId };
+
+      
         if (!req.trainer.isAdmin) {
-            // Members can only view their own leaves
-            query.memberId = req.trainer._id;
+            query.memberId = req.trainer._id; // Ensure we query for leaves belonging to the logged-in member
+          
         }
+
+       
         const leave = await LeaveModel.findOne(query);
+    
+
         if (!leave) {
+    
             return sendNotFoundResponse(res, "Leave request not found or you do not have permission to view it.");
         }
+
         return sendSuccessResponse(res, "Leave request retrieved successfully", leave);
     } catch (error) {
+        console.error('Error getting leave request by ID:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
@@ -47,23 +72,29 @@ export const getAllLeave = async (req, res) => {
     try {
         let query = {};
         if (!req.trainer.isAdmin) {
+            // Members can only view their own leaves
             query.memberId = req.trainer._id;
+         
+        } else {
+       
         }
         const leaves = await LeaveModel.find(query).sort({ createdAt: -1 });
 
         if (!leaves || leaves.length === 0) {
+         
             return sendSuccessResponse(res, "No leave requests found", []);
         }
 
         const formattedLeaves = leaves.map((leave) => {
             return {
                 ...leave._doc,
-                formattedDate: dayjs(leave.createdAtdate).format("DD MMM YYYY"),
+                formattedDate: dayjs(leave.date).format("DD MMM YYYY"),
             };
         });
 
         return sendSuccessResponse(res, "Leave requests retrieved successfully", formattedLeaves);
     } catch (error) {
+        console.error('Error getting all leave requests:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
@@ -131,7 +162,7 @@ export const updateLeaveStatus = async (req, res) => {
     }
     try {
         if (!req.trainer.isAdmin) {
-            return sendForbiddenResponse(res, "Members cannot update leave status.");
+            return sendForbiddenResponse(res, "Only trainers can update leave status.");
         }
 
         const { status } = req.body;

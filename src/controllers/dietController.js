@@ -1,6 +1,6 @@
 import DietModel from '../models/dietModel.js';
 import mongoose from 'mongoose';
-import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse, sendForbiddenResponse } from '../utils/ResponseUtils.js';
 
 // Add a new diet
 export const adddiet = async (req, res) => {
@@ -20,44 +20,44 @@ export const adddiet = async (req, res) => {
             memberId = req.trainer._id;
         }
 
+        // Validate required fields
+        if (!req.body.day || !req.body.breakfast || !req.body.lunch || !req.body.snack || !req.body.dinner) {
+            return sendBadRequestResponse(res, "All fields (day, breakfast, lunch, snack, dinner) are required");
+        }
+
+        // Convert day to lowercase
+        const dayLower = req.body.day.toLowerCase();
+      
+
         const newdiet = new DietModel({
             ...req.body,
+            day: dayLower,
             memberId: memberId
         });
 
-        console.log('Creating new diet with data:', {
-            day: newdiet.day,
-            memberId: newdiet.memberId,
-            breakfast: newdiet.breakfast,
-            lunch: newdiet.lunch,
-            snack: newdiet.snack,
-            dinner: newdiet.dinner
-        });
-
         const saveddiet = await newdiet.save();
+      
         return sendCreatedResponse(res, "Diet plan added successfully", saveddiet);
     } catch (error) {
-        console.error('Error in adddiet:', error);
+        console.error('Error adding diet plan:', error);
         return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single diet by ID
 export const getdietById = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid diet ID");
-    }
     try {
-        let query = { _id: req.params.id };
-        if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id;
-        }
-        const diet = await DietModel.findOne(query);
+       
+        // Use the validated member from middleware
+        const diet = await DietModel.findOne({ memberId: req.member._id });
+        
         if (!diet) {
-            return sendNotFoundResponse(res, "Diet not found or you do not have permission to view it.");
+            return sendNotFoundResponse(res, "Diet plan not found");
         }
+
         return sendSuccessResponse(res, "Diet plan retrieved successfully", diet);
     } catch (error) {
+        console.error('Error getting diet plan:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
@@ -65,13 +65,11 @@ export const getdietById = async (req, res) => {
 // Get all diets
 export const getAlldiet = async (req, res) => {
     try {
-        let query = {};
         if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id;
-            console.log('Member query:', { memberId: req.trainer._id });
+            return sendForbiddenResponse(res, "Access denied. Only trainers can view all diet plans.");
         }
-        const diets = await DietModel.find(query);
-        console.log('Found diets:', diets);
+
+        const diets = await DietModel.find().sort({ createdAt: -1 });
 
         if (!diets || diets.length === 0) {
             return sendSuccessResponse(res, "No diet plans found", []);
@@ -79,7 +77,7 @@ export const getAlldiet = async (req, res) => {
 
         return sendSuccessResponse(res, "Diet plans retrieved successfully", diets);
     } catch (error) {
-        console.error('Error in getAlldiet:', error);
+        console.error('Error getting all diet plans:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
@@ -87,60 +85,88 @@ export const getAlldiet = async (req, res) => {
 // Get diet by day
 export const getDietByDay = async (req, res) => {
     try {
-        let query = { day: req.params.day };
+        const { day } = req.params;
+   
+        // Convert day to lowercase for case-insensitive matching
+        const dayLower = day.toLowerCase();
+       
+
+        // Build query based on user type
+        let query = { day: dayLower };
         if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id;
+            query.memberId = req.member._id;
         }
+      
+
         const diet = await DietModel.findOne(query);
+       
         if (!diet) {
-            return sendNotFoundResponse(res, "Diet plan not found for this day or you do not have permission to view it.");
+            
+            return sendNotFoundResponse(res, "Diet plan not found for this day");
         }
+
         return sendSuccessResponse(res, "Diet plan retrieved successfully", diet);
     } catch (error) {
+        console.error('Error getting diet plan by day:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a diet by ID
 export const updatediet = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid diet ID");
-    }
     try {
-        let query = { _id: req.params.id };
+        const { id } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendBadRequestResponse(res, "Invalid diet plan ID");
+        }
+
+        let query = { _id: id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
+
         const updateddiet = await DietModel.findOneAndUpdate(
             query,
-            req.body,
+            { ...req.body },
             { new: true, runValidators: true }
         );
+
         if (!updateddiet) {
-            return sendNotFoundResponse(res, "Diet not found or you do not have permission to update it.");
+            return sendNotFoundResponse(res, "Diet plan not found or you do not have permission to update it");
         }
+
         return sendSuccessResponse(res, "Diet plan updated successfully", updateddiet);
     } catch (error) {
-        return sendErrorResponse(res, 400, error.message);
+        console.error('Error updating diet plan:', error);
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Delete a diet by ID
 export const deletediet = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid diet ID");
-    }
     try {
-        let query = { _id: req.params.id };
+        const { id } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendBadRequestResponse(res, "Invalid diet plan ID");
+        }
+
+        let query = { _id: id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
+
+    
         const deleteddiet = await DietModel.findOneAndDelete(query);
+
         if (!deleteddiet) {
-            return sendNotFoundResponse(res, "Diet not found or you do not have permission to delete it.");
+            return sendNotFoundResponse(res, "Diet plan not found or you do not have permission to delete it");
         }
+
         return sendSuccessResponse(res, "Diet plan deleted successfully");
     } catch (error) {
+        console.error('Error deleting diet plan:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };

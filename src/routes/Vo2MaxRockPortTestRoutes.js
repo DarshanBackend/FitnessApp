@@ -7,16 +7,17 @@ import {
     deletevo2MaxRockPortTest,
 } from "../controllers/Vo2MaxRockPortTestController.js";
 import { TrainerAuth, isAdmin } from "../middlewares/auth.js";
+import { checkMemberAccess } from "../middlewares/accessControl.js";
 
 const vo2MaxRockPortTestRouter = express.Router();
 
-// Only trainers can add, update, and delete
-vo2MaxRockPortTestRouter.post("/addvo2MaxRockPortTest", TrainerAuth, isAdmin, addvo2MaxRockPortTest);
-vo2MaxRockPortTestRouter.put("/updatevo2MaxRockPortTest/:id", TrainerAuth, isAdmin, updatevo2MaxRockPortTest);
-vo2MaxRockPortTestRouter.delete("/deletevo2MaxRockPortTest/:id", TrainerAuth, isAdmin, deletevo2MaxRockPortTest);
+// Only trainers can add, update, delete, and view all VO2 Max Rock Port Test records
+vo2MaxRockPortTestRouter.post("/addVo2MaxRockPortTest", TrainerAuth, isAdmin, addvo2MaxRockPortTest);
+vo2MaxRockPortTestRouter.put("/updateVo2MaxRockPortTest/:id", TrainerAuth, isAdmin, updatevo2MaxRockPortTest);
+vo2MaxRockPortTestRouter.delete("/deleteVo2MaxRockPortTest/:id", TrainerAuth, isAdmin, deletevo2MaxRockPortTest);
+vo2MaxRockPortTestRouter.get("/getAllVo2MaxRockPortTest", TrainerAuth, isAdmin, getAllvo2MaxRockPortTest);
 
-// Both trainers and members can view
-vo2MaxRockPortTestRouter.get("/getvo2MaxRockPortTestById/:id", TrainerAuth, getvo2MaxRockPortTestById);
-vo2MaxRockPortTestRouter.get("/getAllvo2MaxRockPortTest", TrainerAuth, getAllvo2MaxRockPortTest);
+// Members can only view their own VO2 Max Rock Port Test records
+vo2MaxRockPortTestRouter.get("/getVo2MaxRockPortTestById/:id", TrainerAuth, checkMemberAccess, getvo2MaxRockPortTestById);
 
 export default vo2MaxRockPortTestRouter;
