@@ -1,31 +1,32 @@
 import MuscularEnduranceCrunchModel from '../models/MuscularEnduranceCrunchModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
 
 // Add a new MuscularEnduranceCrunch
 export const addMuscularEnduranceCrunch = async (req, res) => {
     try {
         const newMuscularEnduranceCrunch = new MuscularEnduranceCrunchModel(req.body);
         const savedMuscularEnduranceCrunch = await newMuscularEnduranceCrunch.save();
-        res.status(201).json(savedMuscularEnduranceCrunch);
+        return sendCreatedResponse(res, "Muscular Endurance Crunch added successfully", savedMuscularEnduranceCrunch);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single MuscularEnduranceCrunch by ID
 export const getMuscularEnduranceCrunchById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Endurance Crunch ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Endurance Crunch ID");
     }
     try {
         const MuscularEnduranceCrunch = await MuscularEnduranceCrunchModel.findById(req.params.id);
         if (!MuscularEnduranceCrunch) {
-            return res.status(404).json({ message: "Muscular Endurance Crunch not found" });
+            return sendNotFoundResponse(res, "Muscular Endurance Crunch not found");
         }
-        res.status(200).json(MuscularEnduranceCrunch);
+        return sendSuccessResponse(res, "Muscular Endurance Crunch retrieved successfully", MuscularEnduranceCrunch);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -35,7 +36,7 @@ export const getAllMuscularEnduranceCrunch = async (req, res) => {
         const MuscularEnduranceCrunchs = await MuscularEnduranceCrunchModel.find().sort({ createdAt: -1 });
 
         if (!MuscularEnduranceCrunchs || MuscularEnduranceCrunchs.length === 0) {
-            return res.status(200).json({ message: "No any Muscular Endurance Crunch found!!" });
+            return sendSuccessResponse(res, "No Muscular Endurance Crunch records found", []);
         }
 
         const formattedMuscularEnduranceCrunchs = MuscularEnduranceCrunchs.map((MuscularEnduranceCrunch) => {
@@ -45,16 +46,16 @@ export const getAllMuscularEnduranceCrunch = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedMuscularEnduranceCrunchs);
+        return sendSuccessResponse(res, "Muscular Endurance Crunch records retrieved successfully", formattedMuscularEnduranceCrunchs);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a MuscularEnduranceCrunch by ID
 export const updateMuscularEnduranceCrunch = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Endurance Crunch ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Endurance Crunch ID");
     }
     try {
         const updatedMuscularEnduranceCrunch = await MuscularEnduranceCrunchModel.findByIdAndUpdate(
@@ -63,26 +64,26 @@ export const updateMuscularEnduranceCrunch = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!updatedMuscularEnduranceCrunch) {
-            return res.status(404).json({ message: "Muscular Endurance Crunch not found" });
+            return sendNotFoundResponse(res, "Muscular Endurance Crunch not found");
         }
-        res.status(200).json(updatedMuscularEnduranceCrunch);
+        return sendSuccessResponse(res, "Muscular Endurance Crunch updated successfully", updatedMuscularEnduranceCrunch);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Delete a MuscularEnduranceCrunch by ID
 export const deleteMuscularEnduranceCrunch = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Endurance Crunch ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Endurance Crunch ID");
     }
     try {
         const deletedMuscularEnduranceCrunch = await MuscularEnduranceCrunchModel.findByIdAndDelete(req.params.id);
         if (!deletedMuscularEnduranceCrunch) {
-            return res.status(404).json({ message: "Muscular Endurance Crunch not found" });
+            return sendNotFoundResponse(res, "Muscular Endurance Crunch not found");
         }
-        res.status(200).json({ message: "Muscular Endurance Crunch deleted successfully" });
+        return sendSuccessResponse(res, "Muscular Endurance Crunch deleted successfully");
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };

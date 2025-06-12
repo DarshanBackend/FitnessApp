@@ -1,12 +1,13 @@
 import LeaveModel from '../models/leaveModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendForbiddenResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
 
 // Add a new leave request (Member Only)
 export const addLeave = async (req, res) => {
     try {
         if (req.trainer.isAdmin) {
-            return res.status(403).json({ message: "Trainers cannot add leave requests." });
+            return sendForbiddenResponse(res, "Trainers cannot add leave requests.");
         }
 
         const newLeave = new LeaveModel({
@@ -14,16 +15,16 @@ export const addLeave = async (req, res) => {
             memberId: req.trainer._id,
         });
         const savedLeave = await newLeave.save();
-        res.status(201).json(savedLeave);
+        return sendCreatedResponse(res, "Leave request added successfully", savedLeave);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single leave request by ID (Both Trainers and Members)
 export const getLeaveById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Leave ID" });
+        return sendBadRequestResponse(res, "Invalid Leave ID");
     }
     try {
         let query = { _id: req.params.id };
@@ -33,11 +34,11 @@ export const getLeaveById = async (req, res) => {
         }
         const leave = await LeaveModel.findOne(query);
         if (!leave) {
-            return res.status(404).json({ message: "Leave request not found or you do not have permission to view it." });
+            return sendNotFoundResponse(res, "Leave request not found or you do not have permission to view it.");
         }
-        res.status(200).json(leave);
+        return sendSuccessResponse(res, "Leave request retrieved successfully", leave);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -51,7 +52,7 @@ export const getAllLeave = async (req, res) => {
         const leaves = await LeaveModel.find(query).sort({ createdAt: -1 });
 
         if (!leaves || leaves.length === 0) {
-            return res.status(200).json({ message: "No leave requests found!!" });
+            return sendSuccessResponse(res, "No leave requests found", []);
         }
 
         const formattedLeaves = leaves.map((leave) => {
@@ -61,29 +62,29 @@ export const getAllLeave = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedLeaves);
+        return sendSuccessResponse(res, "Leave requests retrieved successfully", formattedLeaves);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a leave request (Member Only, if Pending)
 export const updateLeave = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Leave ID" });
+        return sendBadRequestResponse(res, "Invalid Leave ID");
     }
     try {
         if (req.trainer.isAdmin) {
-            return res.status(403).json({ message: "Trainers cannot update leave requests." });
+            return sendForbiddenResponse(res, "Trainers cannot update leave requests.");
         }
 
         const leave = await LeaveModel.findOne({ _id: req.params.id, memberId: req.trainer._id });
         if (!leave) {
-            return res.status(404).json({ message: "Leave request not found or you do not have permission to update it." });
+            return sendNotFoundResponse(res, "Leave request not found or you do not have permission to update it.");
         }
 
         if (leave.status !== "Pending") {
-            return res.status(400).json({ message: "Only pending leave requests can be updated." });
+            return sendBadRequestResponse(res, "Only pending leave requests can be updated.");
         }
 
         const updatedLeave = await LeaveModel.findByIdAndUpdate(
@@ -91,63 +92,63 @@ export const updateLeave = async (req, res) => {
             req.body,
             { new: true, runValidators: true }
         );
-        res.status(200).json(updatedLeave);
+        return sendSuccessResponse(res, "Leave request updated successfully", updatedLeave);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Delete a leave request (Member Only, if Pending)
 export const deleteLeave = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Leave ID" });
+        return sendBadRequestResponse(res, "Invalid Leave ID");
     }
     try {
         if (req.trainer.isAdmin) {
-            return res.status(403).json({ message: "Trainers cannot delete leave requests." });
+            return sendForbiddenResponse(res, "Trainers cannot delete leave requests.");
         }
 
         const leave = await LeaveModel.findOne({ _id: req.params.id, memberId: req.trainer._id });
         if (!leave) {
-            return res.status(404).json({ message: "Leave request not found or you do not have permission to delete it." });
+            return sendNotFoundResponse(res, "Leave request not found or you do not have permission to delete it.");
         }
 
         if (leave.status !== "Pending") {
-            return res.status(400).json({ message: "Only pending leave requests can be deleted." });
+            return sendBadRequestResponse(res, "Only pending leave requests can be deleted.");
         }
 
         const deletedLeave = await LeaveModel.findByIdAndDelete(req.params.id);
-        res.status(200).json({ message: "Leave request deleted successfully" });
+        return sendSuccessResponse(res, "Leave request deleted successfully");
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update leave status (Trainer Only)
 export const updateLeaveStatus = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Leave ID" });
+        return sendBadRequestResponse(res, "Invalid Leave ID");
     }
     try {
         if (!req.trainer.isAdmin) {
-            return res.status(403).json({ message: "Members cannot update leave status." });
+            return sendForbiddenResponse(res, "Members cannot update leave status.");
         }
 
         const { status } = req.body;
         if (!status || !["Approved", "Rejected", "Pending"].includes(status)) {
-            return res.status(400).json({ message: "Invalid status provided. Must be Approved, Rejected, or Pending." });
+            return sendBadRequestResponse(res, "Invalid status provided. Must be Approved, Rejected, or Pending.");
         }
 
         const leave = await LeaveModel.findById(req.params.id);
         if (!leave) {
-            return res.status(404).json({ message: "Leave request not found." });
+            return sendNotFoundResponse(res, "Leave request not found.");
         }
 
         leave.status = status;
         await leave.save();
 
-        res.status(200).json(leave);
+        return sendSuccessResponse(res, "Leave status updated successfully", leave);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 }; 

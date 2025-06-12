@@ -3,6 +3,7 @@ import { ThrowError } from "../utils/ErrorUtils.js"
 import bcrypt from "bcryptjs";
 import fs from 'fs';
 import path from "path";
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendForbiddenResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
 
 // Create new user
 export const createRegister = async (req, res) => {
@@ -10,23 +11,17 @@ export const createRegister = async (req, res) => {
         const { name, contact, email, birth_date, password, type } = req.body;
 
         if (!name || !contact || !email || !birth_date || !password || !type) {
-            return res.status(400).json({
-                message: "All fields are required"
-            });
+            return sendBadRequestResponse(res, "All fields are required");
         }
 
         const birthDate = new Date(birth_date);
         if (isNaN(birthDate.getTime())) {
-            return res.status(400).json({
-                message: "Invalid birth date format. Please use YYYY-MM-DD format"
-            });
+            return sendBadRequestResponse(res, "Invalid birth date format. Please use YYYY-MM-DD format");
         }
 
         const existingTrainer = await Register.findOne({ email });
         if (existingTrainer) {
-            return res.status(400).json({
-                message: "Email already registered"
-            });
+            return sendBadRequestResponse(res, "Email already registered");
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -41,10 +36,7 @@ export const createRegister = async (req, res) => {
             isAdmin: type === 'trainer'
         });
 
-        res.status(201).json({
-            message: "Registration successful",
-            data: newRegister
-        });
+        return sendCreatedResponse(res, "Registration successful", newRegister);
     } catch (error) {
         return ThrowError(res, 500, error.message)
     }
@@ -57,20 +49,16 @@ export const getRegisterById = async (req, res) => {
 
         let query = { _id: id };
         if (!req.trainer.isAdmin && req.trainer._id.toString() !== id) {
-            return res.status(403).json({ message: "Access denied. You can only view your own profile." });
+            return sendForbiddenResponse(res, "Access denied. You can only view your own profile.");
         }
 
         const register = await Register.findOne(query);
 
         if (!register) {
-            return res.status(404).json({
-                message: "Member not found"
-            });
+            return sendErrorResponse(res, 404, "Member not found");
         }
 
-        res.status(200).json({
-            data: register
-        });
+        return sendSuccessResponse(res, "Member retrieved successfully", register);
     } catch (error) {
         return ThrowError(res, 500, error.message)
     }
@@ -81,18 +69,15 @@ export const getAllRegister = async (req, res) => {
     try {
         let query = {};
         if (!req.trainer.isAdmin) {
-            return res.status(403).json({ message: "Access denied. Only trainers can view all members." });
+            return sendForbiddenResponse(res, "Access denied. Only trainers can view all members.");
         }
         const registers = await Register.find(query);
 
         if (!registers || registers.length === 0) {
-            return res.status(200).json({ message: "No any member found!!" })
+            return sendSuccessResponse(res, "No members found", []);
         }
 
-        return res.status(200).json({
-            message: "Members fetched successfully",
-            data: registers
-        });
+        return sendSuccessResponse(res, "Members fetched successfully", registers);
 
     } catch (error) {
         return ThrowError(res, 500, error.message)
@@ -106,7 +91,7 @@ export const updateRegister = async (req, res) => {
         const { name, contact, birth_date } = req.body;
 
         if (!req.trainer.isAdmin && req.trainer._id.toString() !== id) {
-            return res.status(403).json({ message: "Access denied. You can only update your own profile." });
+            return sendForbiddenResponse(res, "Access denied. You can only update your own profile.");
         }
 
         const existingTrainer = await Register.findById(id);
@@ -137,9 +122,7 @@ export const updateRegister = async (req, res) => {
                         fs.unlinkSync(filePath);
                     }
                 }
-                return res.status(400).json({
-                    message: "Invalid birth date format. Please use YYYY-MM-DD format"
-                });
+                return sendBadRequestResponse(res, "Invalid birth date format. Please use YYYY-MM-DD format");
             }
             existingTrainer.birth_date = birthDate;
         }
@@ -156,10 +139,7 @@ export const updateRegister = async (req, res) => {
 
         await existingTrainer.save();
 
-        return res.status(200).json({
-            message: "Member updated successfully",
-            data: existingTrainer
-        });
+        return sendSuccessResponse(res, "Member updated successfully", existingTrainer);
     } catch (error) {
         if (req.file) {
             const filePath = path.resolve(req.file.path);
@@ -178,9 +158,7 @@ export const deleteRegister = async (req, res) => {
 
         const existingTrainer = await Register.findById(id);
         if (!existingTrainer) {
-            return res.status(404).json({
-                message: "Member not found"
-            });
+            return sendErrorResponse(res, 404, "Member not found");
         }
 
         if (existingTrainer.trainer_image) {
@@ -193,9 +171,7 @@ export const deleteRegister = async (req, res) => {
 
         await Register.findByIdAndDelete(id);
 
-        res.status(200).json({
-            message: "Member deleted successfully"
-        });
+        return sendSuccessResponse(res, "Member deleted successfully");
     } catch (error) {
         return ThrowError(res, 500, error.message)
     }

@@ -2,6 +2,7 @@ import Register from "../models/registerModel.js";
 import { ThrowError } from "../utils/ErrorUtils.js"
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer"
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendUnauthorizedResponse } from '../utils/ResponseUtils.js';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -10,24 +11,24 @@ export const loginUser = async (req, res) => {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required" });
+            return sendBadRequestResponse(res, "Email and password are required");
         }
 
         const user = await Register.findOne({ email: email.toLowerCase() });
         if (!user) {
-            return res.status(404).json({ message: "User not found" });
+            return sendErrorResponse(res, 404, "User not found");
         }
 
         // Validate password
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            return res.status(401).json({ message: "Invalid password" });
+            return sendUnauthorizedResponse(res, "Invalid password");
         }
 
         // Generate JWT token
         const token = await user.getJWT();
         if (!token) {
-            return res.status(500).json({ message: "Failed to generate token" });
+            return sendErrorResponse(res, 500, "Failed to generate token");
         }
 
         // Set token in cookie
@@ -36,14 +37,11 @@ export const loginUser = async (req, res) => {
             expires: new Date(Date.now() + 8 * 3600000), // 8 hours
         });
 
-        return res.status(200).json({
-            message: "Login successful",
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                type: user.type
-            },
+        return sendSuccessResponse(res, "Login successful", {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            type: user.type
         });
 
     } catch (error) {
@@ -56,12 +54,12 @@ export const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) {
-            return res.status(400).json({ message: "Provide Email Id" });
+            return sendBadRequestResponse(res, "Provide Email Id");
         }
 
         const user = await Register.findOne({ email: email })
         if (!user) {
-            return res.status(400).json({ message: "User Not Found" });
+            return sendErrorResponse(res, 400, "User Not Found");
         }
 
         const otp = generateOTP();
@@ -82,11 +80,11 @@ export const forgotPassword = async (req, res) => {
             from: process.env.MY_GMAIL,
             to: email,
             subject: "Password Reset OTP",
-            text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`, // Changed from trainer Password Reset OTP
+            text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
         };
 
         await transporter.sendMail(mailOptions);
-        return res.status(200).json({ message: "OTP sent successfully to your email." });
+        return sendSuccessResponse(res, "OTP sent successfully to your email");
 
     } catch (error) {
         return ThrowError(res, 500, error.message);
@@ -99,25 +97,21 @@ export const VerifyEmail = async (req, res) => {
         const { email, otp } = req.body;
 
         if (!email || !otp) {
-            return res
-                .status(400)
-                .json({ message: "Please provide email and OTP." });
+            return sendBadRequestResponse(res, "Please provide email and OTP.");
         }
 
         const user = await Register.findOne({ email: email });
         if (!user) {
-            return res.status(404).json({ message: "User not found." });
+            return sendErrorResponse(res, 404, "User not found.");
         }
 
         if (user.resetOTP !== otp || user.otpExpires < Date.now()) {
-            return res.status(400).json({ message: "Invalid or expired OTP." });
+            return sendBadRequestResponse(res, "Invalid or expired OTP.");
         }
 
         await user.save();
 
-        return res.status(200).json({
-            message: "OTP Submitted successfully."
-        });
+        return sendSuccessResponse(res, "OTP Submitted successfully.");
 
     } catch (error) {
         return ThrowError(res, 500, error.message);
@@ -129,20 +123,16 @@ export const resetPassword = async (req, res) => {
     try {
         const { email, newPassword, confirmPassword } = req.body;
         if (!newPassword || !confirmPassword) {
-            return res
-                .status(400)
-                .json({ message: "Please provide email , newpassword and confirmpassword." });
+            return sendBadRequestResponse(res, "Please provide email, newpassword and confirmpassword.");
         }
 
         const user = await Register.findOne({ email: email });
         if (!user) {
-            return res.status(400).json({ message: "User Not Found" });
+            return sendErrorResponse(res, 400, "User Not Found");
         }
 
         if (!(newPassword === confirmPassword)) {
-            return res
-                .status(400)
-                .json({ message: "Please check newpassword and confirmpassword." });
+            return sendBadRequestResponse(res, "Please check newpassword and confirmpassword.");
         }
 
         await Register.findOne({ password: newPassword });
@@ -151,10 +141,7 @@ export const resetPassword = async (req, res) => {
         user.otpExpires = undefined;
         await user.save();
 
-        return res.status(200).json({
-            message: "Password reset successfully.",
-            user: { id: user._id, email: user.email },
-        });
+        return sendSuccessResponse(res, "Password reset successfully.", { id: user._id, email: user.email });
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
@@ -167,40 +154,32 @@ export const changePassword = async (req, res) => {
         const { oldPassword, newPassword, confirmPassword } = req.body;
 
         if (!oldPassword || !newPassword || !confirmPassword) {
-            return res.status(400).json({
-                message: "oldPassword, newPassword, and confirmPassword are required."
-            });
+            return sendBadRequestResponse(res, "oldPassword, newPassword, and confirmPassword are required.");
         }
 
         const user = await Register.findById(id);
         if (!user) {
-            return res.status(404).json({
-                message: "User not found with the provided ID"
-            });
+            return sendErrorResponse(res, 404, "User not found with the provided ID");
         }
 
         const isMatch = await bcrypt.compare(oldPassword, user.password);
         if (!isMatch) {
-            return res.status(400).json({ message: "Current password is incorrect." });
+            return sendBadRequestResponse(res, "Current password is incorrect.");
         }
 
         if (newPassword === oldPassword) {
-            return res.status(400).json({
-                message: "New password cannot be the same as current password."
-            });
+            return sendBadRequestResponse(res, "New password cannot be the same as current password.");
         }
 
         if (newPassword !== confirmPassword) {
-            return res.status(400).json({
-                message: "New password and confirm password do not match."
-            });
+            return sendBadRequestResponse(res, "New password and confirm password do not match.");
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;
         await user.save();
 
-        return res.status(200).json({ message: "Password changed successfully." });
+        return sendSuccessResponse(res, "Password changed successfully.");
 
     } catch (error) {
         return ThrowError(res, 500, error.message);
@@ -211,9 +190,8 @@ export const changePassword = async (req, res) => {
 export const logoutUser = async (req, res) => {
     try {
         res.cookie("token", null, { expires: new Date(Date.now()) });
-
-        res.send("User logout successfully...✅");
+        return sendSuccessResponse(res, "User logout successfully...✅");
     } catch (error) {
-        res.status(400).send("ERROR: " + error.message);
+        return sendErrorResponse(res, 400, error.message);
     }
 };

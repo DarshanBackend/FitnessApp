@@ -1,31 +1,32 @@
 import FlexiblitiyModel from '../models/FlexiblitiyModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
 
 // Add a new Flexiblitiy
 export const addFlexiblitiy = async (req, res) => {
     try {
         const newFlexiblitiy = new FlexiblitiyModel(req.body);
         const savedFlexiblitiy = await newFlexiblitiy.save();
-        res.status(201).json(savedFlexiblitiy);
+        return sendCreatedResponse(res, "Flexibility record added successfully", savedFlexiblitiy);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single Flexiblitiy by ID
 export const getFlexiblitiyById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Flexibility ID" });
+        return sendBadRequestResponse(res, "Invalid Flexibility ID");
     }
     try {
         const Flexiblitiy = await FlexiblitiyModel.findById(req.params.id);
         if (!Flexiblitiy) {
-            return res.status(404).json({ message: "Flexibility not found" });
+            return sendNotFoundResponse(res, "Flexibility not found");
         }
-        res.status(200).json(Flexiblitiy);
+        return sendSuccessResponse(res, "Flexibility retrieved successfully", Flexiblitiy);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -35,7 +36,7 @@ export const getAllFlexiblitiy = async (req, res) => {
         const Flexiblitiys = await FlexiblitiyModel.find().sort({ createdAt: -1 });
 
         if (!Flexiblitiys || Flexiblitiys.length === 0) {
-            return res.status(200).json({ message: "No any Flexibility found!!" });
+            return sendSuccessResponse(res, "No Flexibility records found", []);
         }
 
         const formattedFlexiblitiys = Flexiblitiys.map((Flexiblitiy) => {
@@ -45,16 +46,16 @@ export const getAllFlexiblitiy = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedFlexiblitiys);
+        return sendSuccessResponse(res, "Flexibility records retrieved successfully", formattedFlexiblitiys);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a Flexiblitiy by ID
 export const updateFlexiblitiy = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Flexibility ID" });
+        return sendBadRequestResponse(res, "Invalid Flexibility ID");
     }
     try {
         const updatedFlexiblitiy = await FlexiblitiyModel.findByIdAndUpdate(
@@ -63,26 +64,26 @@ export const updateFlexiblitiy = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!updatedFlexiblitiy) {
-            return res.status(404).json({ message: "Flexibility not found" });
+            return sendNotFoundResponse(res, "Flexibility not found");
         }
-        res.status(200).json(updatedFlexiblitiy);
+        return sendSuccessResponse(res, "Flexibility updated successfully", updatedFlexiblitiy);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Delete a Flexiblitiy by ID
 export const deleteFlexiblitiy = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Flexibility ID" });
+        return sendBadRequestResponse(res, "Invalid Flexibility ID");
     }
     try {
         const deletedFlexiblitiy = await FlexiblitiyModel.findByIdAndDelete(req.params.id);
         if (!deletedFlexiblitiy) {
-            return res.status(404).json({ message: "Flexibility not found" });
+            return sendNotFoundResponse(res, "Flexibility not found");
         }
-        res.status(200).json({ message: "Flexibility deleted successfully" });
+        return sendSuccessResponse(res, "Flexibility deleted successfully");
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };

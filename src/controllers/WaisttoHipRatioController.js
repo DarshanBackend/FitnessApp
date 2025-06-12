@@ -1,31 +1,32 @@
 import WaisttoHipRatioModel from '../models/WaisttoHipRatioModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendCreatedResponse, sendNotFoundResponse, sendBadRequestResponse } from '../utils/ResponseUtils.js';
 
 // Add a new WaisttoHipRatio
 export const addWaisttoHipRatio = async (req, res) => {
     try {
         const newWaisttoHipRatio = new WaisttoHipRatioModel(req.body);
         const savedWaisttoHipRatio = await newWaisttoHipRatio.save();
-        res.status(201).json(savedWaisttoHipRatio);
+        return sendCreatedResponse(res, "Waist to Hip Ratio added successfully", savedWaisttoHipRatio);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single WaisttoHipRatio by ID
 export const getWaisttoHipRatioById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Waist to Hip Ratio ID" });
+        return sendBadRequestResponse(res, "Invalid Waist to Hip Ratio ID");
     }
     try {
         const WaisttoHipRatio = await WaisttoHipRatioModel.findById(req.params.id);
         if (!WaisttoHipRatio) {
-            return res.status(404).json({ message: "Waist to Hip Ratio not found" });
+            return sendNotFoundResponse(res, "Waist to Hip Ratio not found");
         }
-        res.status(200).json(WaisttoHipRatio);
+        return sendSuccessResponse(res, "Waist to Hip Ratio retrieved successfully", WaisttoHipRatio);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -35,7 +36,7 @@ export const getAllWaisttoHipRatio = async (req, res) => {
         const WaisttoHipRatios = await WaisttoHipRatioModel.find().sort({ createdAt: -1 });
 
         if (!WaisttoHipRatios || WaisttoHipRatios.length === 0) {
-            return res.status(200).json({ message: "No any Waist to Hip Ratio found!!" });
+            return sendSuccessResponse(res, "No Waist to Hip Ratios found", []);
         }
 
         const formattedWaisttoHipRatios = WaisttoHipRatios.map((WaisttoHipRatio) => {
@@ -45,16 +46,16 @@ export const getAllWaisttoHipRatio = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedWaisttoHipRatios);
+        return sendSuccessResponse(res, "Waist to Hip Ratios retrieved successfully", formattedWaisttoHipRatios);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a WaisttoHipRatio by ID
 export const updateWaisttoHipRatio = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Waist to Hip Ratio ID" });
+        return sendBadRequestResponse(res, "Invalid Waist to Hip Ratio ID");
     }
     try {
         const updatedWaisttoHipRatio = await WaisttoHipRatioModel.findByIdAndUpdate(
@@ -63,11 +64,11 @@ export const updateWaisttoHipRatio = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!updatedWaisttoHipRatio) {
-            return res.status(404).json({ message: "Waist to Hip Ratio not found" });
+            return sendNotFoundResponse(res, "Waist to Hip Ratio not found");
         }
-        res.status(200).json(updatedWaisttoHipRatio);
+        return sendSuccessResponse(res, "Waist to Hip Ratio updated successfully", updatedWaisttoHipRatio);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 

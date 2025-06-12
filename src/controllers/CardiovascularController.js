@@ -1,31 +1,32 @@
 import CardiovascularModel from '../models/CardiovascularModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendCreatedResponse, sendNotFoundResponse, sendBadRequestResponse } from '../utils/ResponseUtils.js';
 
 // Add a new Cardiovascular
 export const addCardiovascular = async (req, res) => {
     try {
         const newCardiovascular = new CardiovascularModel(req.body);
         const savedCardiovascular = await newCardiovascular.save();
-        res.status(201).json(savedCardiovascular);
+        return sendCreatedResponse(res, "Cardiovascular record added successfully", savedCardiovascular);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single Cardiovascular by ID
 export const getCardiovascularById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Cardiovascular ID" });
+        return sendBadRequestResponse(res, "Invalid Cardiovascular ID");
     }
     try {
         const Cardiovascular = await CardiovascularModel.findById(req.params.id);
         if (!Cardiovascular) {
-            return res.status(404).json({ message: "Cardiovascular not found" });
+            return sendNotFoundResponse(res, "Cardiovascular not found");
         }
-        res.status(200).json(Cardiovascular);
+        return sendSuccessResponse(res, "Cardiovascular record retrieved successfully", Cardiovascular);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -35,7 +36,7 @@ export const getAllCardiovascular = async (req, res) => {
         const Cardiovasculars = await CardiovascularModel.find().sort({ createdAt: -1 });
 
         if (!Cardiovasculars || Cardiovasculars.length === 0) {
-            return res.status(200).json({ message: "No any Cardiovascular found!!" });
+            return sendSuccessResponse(res, "No Cardiovascular records found", []);
         }
 
         const formattedCardiovasculars = Cardiovasculars.map((Cardiovascular) => {
@@ -45,16 +46,16 @@ export const getAllCardiovascular = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedCardiovasculars);
+        return sendSuccessResponse(res, "Cardiovascular records retrieved successfully", formattedCardiovasculars);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a Cardiovascular by ID
 export const updateCardiovascular = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Cardiovascular ID" });
+        return sendBadRequestResponse(res, "Invalid Cardiovascular ID");
     }
     try {
         const updatedCardiovascular = await CardiovascularModel.findByIdAndUpdate(
@@ -63,26 +64,26 @@ export const updateCardiovascular = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!updatedCardiovascular) {
-            return res.status(404).json({ message: "Cardiovascular not found" });
+            return sendNotFoundResponse(res, "Cardiovascular not found");
         }
-        res.status(200).json(updatedCardiovascular);
+        return sendSuccessResponse(res, "Cardiovascular record updated successfully", updatedCardiovascular);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Delete a Cardiovascular by ID
 export const deleteCardiovascular = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Cardiovascular ID" });
+        return sendBadRequestResponse(res, "Invalid Cardiovascular ID");
     }
     try {
         const deletedCardiovascular = await CardiovascularModel.findByIdAndDelete(req.params.id);
         if (!deletedCardiovascular) {
-            return res.status(404).json({ message: "Cardiovascular not found" });
+            return sendNotFoundResponse(res, "Cardiovascular not found");
         }
-        res.status(200).json({ message: "Cardiovascular deleted successfully" });
+        return sendSuccessResponse(res, "Cardiovascular record deleted successfully", null);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };

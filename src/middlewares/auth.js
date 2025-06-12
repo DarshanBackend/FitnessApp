@@ -1,12 +1,13 @@
 import jwt from "jsonwebtoken";
 import registerModel from "../models/registerModel.js";
+import { sendErrorResponse, sendForbiddenResponse, sendUnauthorizedResponse } from '../utils/ResponseUtils.js';
 
 export const TrainerAuth = async (req, res, next) => {
     try {
         const { token } = req.cookies;
 
         if (!token) {
-            throw new Error("Token is not valid!!!");
+            return sendUnauthorizedResponse(res, "Token is not valid");
         }
 
         const decodedObj = await jwt.verify(token, process.env.JWT_SECRET || "Darshan@123"); 
@@ -16,13 +17,13 @@ export const TrainerAuth = async (req, res, next) => {
         const trainer = await registerModel.findById(_id);
 
         if (!trainer) {
-            throw new Error("Trainer not Found!!!");
+            return sendNotFoundResponse(res, "Trainer not found");
         }
 
         req.trainer = trainer;
         next();
     } catch (error) {
-        res.status(400).send("ERROR: " + error.message);
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
@@ -30,11 +31,11 @@ export const isAdmin = async (req, res, next) => {
     try {
         // Assuming TrainerAuth has already run and set req.trainer
         if (!req.trainer || !req.trainer.isAdmin) {
-            return res.status(403).json({ message: "Access denied. Not an admin/trainer." });
+            return sendForbiddenResponse(res, "Access denied. Not an admin/trainer.");
         }
         next();
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -42,14 +43,14 @@ export const isMember = async (req, res, next) => {
     try {
         // Assuming TrainerAuth has already run and set req.trainer (which can be a member here)
         if (!req.trainer) {
-            return res.status(401).json({ message: "Authentication required." });
+            return sendUnauthorizedResponse(res, "Authentication required");
         }
         // If isAdmin is false, it's a member or default member
         if (req.trainer.isAdmin) {
-            return res.status(403).json({ message: "Access denied. Not a member." });
+            return sendForbiddenResponse(res, "Access denied. Not a member.");
         }
         next();
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };

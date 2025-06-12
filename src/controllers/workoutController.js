@@ -1,6 +1,7 @@
 import WorkoutModel from '../models/workoutModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
 
 // Add a new workout
 export const addWorkout = async (req, res) => {
@@ -8,17 +9,11 @@ export const addWorkout = async (req, res) => {
         let memberId;
         if (req.trainer.isAdmin) {
             if (!req.body.memberId) {
-                return res.status(400).json({
-                    message: "memberId is required for trainers to add workout data for a member.",
-                    details: "Please provide the member's ID in the request body"
-                });
+                return sendBadRequestResponse(res, "memberId is required for trainers to add workout data for a member.");
             }
 
             if (!mongoose.Types.ObjectId.isValid(req.body.memberId)) {
-                return res.status(400).json({
-                    message: "Invalid memberId format",
-                    details: "The provided memberId is not a valid MongoDB ObjectId"
-                });
+                return sendBadRequestResponse(res, "Invalid memberId format");
             }
             memberId = req.body.memberId;
         } else {
@@ -30,16 +25,16 @@ export const addWorkout = async (req, res) => {
             memberId: memberId
         });
         const savedWorkout = await newWorkout.save();
-        res.status(201).json(savedWorkout);
+        return sendCreatedResponse(res, "Workout added successfully", savedWorkout);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single workout by ID
 export const getWorkoutById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Workout ID" });
+        return sendBadRequestResponse(res, "Invalid Workout ID");
     }
     try {
         let query = { _id: req.params.id };
@@ -48,11 +43,11 @@ export const getWorkoutById = async (req, res) => {
         }
         const workout = await WorkoutModel.findOne(query);
         if (!workout) {
-            return res.status(404).json({ message: "Workout not found or you do not have permission to view it." });
+            return sendNotFoundResponse(res, "Workout not found or you do not have permission to view it.");
         }
-        res.status(200).json(workout);
+        return sendSuccessResponse(res, "Workout retrieved successfully", workout);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -66,7 +61,7 @@ export const getAllWorkout = async (req, res) => {
         const workouts = await WorkoutModel.find(query).sort({ createdAt: -1 });
 
         if (!workouts || workouts.length === 0) {
-            return res.status(200).json({ message: "No any workout found!!" });
+            return sendSuccessResponse(res, "No workouts found", []);
         }
 
         const formattedWorkouts = workouts.map((workout) => {
@@ -76,16 +71,16 @@ export const getAllWorkout = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedWorkouts);
+        return sendSuccessResponse(res, "Workouts retrieved successfully", formattedWorkouts);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a workout by ID
 export const updateWorkout = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Workout ID" });
+        return sendBadRequestResponse(res, "Invalid Workout ID");
     }
     try {
         let query = { _id: req.params.id };
@@ -98,32 +93,30 @@ export const updateWorkout = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!updatedWorkout) {
-            return res.status(404).json({ message: "Workout not found or you do not have permission to update it." });
+            return sendNotFoundResponse(res, "Workout not found or you do not have permission to update it.");
         }
-        res.status(200).json(updatedWorkout);
+        return sendSuccessResponse(res, "Workout updated successfully", updatedWorkout);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Delete a workout by ID
 export const deleteWorkout = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Workout ID" });
+        return sendBadRequestResponse(res, "Invalid Workout ID");
     }
     try {
         let query = { _id: req.params.id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
-        const deletedWorkout = await WorkoutModel.findOneAndDelete(
-            query
-        );
+        const deletedWorkout = await WorkoutModel.findOneAndDelete(query);
         if (!deletedWorkout) {
-            return res.status(404).json({ message: "Workout not found or you do not have permission to delete it." });
+            return sendNotFoundResponse(res, "Workout not found or you do not have permission to delete it.");
         }
-        res.status(200).json({ message: "Workout deleted successfully" });
+        return sendSuccessResponse(res, "Workout deleted successfully");
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 }; 

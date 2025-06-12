@@ -1,6 +1,7 @@
 import MuscularEndurancePushUPModel from '../models/MuscularEndurancePushUPModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
 
 
 // Add a new MuscularEndurancePushUP
@@ -8,25 +9,25 @@ export const addMuscularEndurancePushUP = async (req, res) => {
     try {
         const newMuscularEndurancePushUP = new MuscularEndurancePushUPModel(req.body);
         const savedMuscularEndurancePushUP = await newMuscularEndurancePushUP.save();
-        res.status(201).json(savedMuscularEndurancePushUP);
+        return sendCreatedResponse(res, "Muscular Endurance Push UP added successfully", savedMuscularEndurancePushUP);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single MuscularEndurancePushUP by ID
 export const getMuscularEndurancePushUPById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Endurance Push UP ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Endurance Push UP ID");
     }
     try {
         const MuscularEndurancePushUP = await MuscularEndurancePushUPModel.findById(req.params.id);
         if (!MuscularEndurancePushUP) {
-            return res.status(404).json({ message: "Muscular Endurance Push UP not found" });
+            return sendNotFoundResponse(res, "Muscular Endurance Push UP not found");
         }
-        res.status(200).json(MuscularEndurancePushUP);
+        return sendSuccessResponse(res, "Muscular Endurance Push UP retrieved successfully", MuscularEndurancePushUP);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -36,7 +37,7 @@ export const getAllMuscularEndurancePushUP = async (req, res) => {
         const MuscularEndurancePushUPs = await MuscularEndurancePushUPModel.find().sort({ createdAt: -1 });
 
         if (!MuscularEndurancePushUPs || MuscularEndurancePushUPs.length === 0) {
-            return res.status(200).json({ message: "No any Muscular Endurance Push UP found!!" });
+            return sendSuccessResponse(res, "No Muscular Endurance Push UP records found", []);
         }
 
         const formattedMuscularEndurancePushUPs = MuscularEndurancePushUPs.map((MuscularEndurancePushUP) => {
@@ -46,16 +47,16 @@ export const getAllMuscularEndurancePushUP = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedMuscularEndurancePushUPs);
+        return sendSuccessResponse(res, "Muscular Endurance Push UP records retrieved successfully", formattedMuscularEndurancePushUPs);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a MuscularEndurancePushUP by ID
 export const updateMuscularEndurancePushUP = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Endurance Push UP ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Endurance Push UP ID");
     }
     try {
         const updatedMuscularEndurancePushUP = await MuscularEndurancePushUPModel.findByIdAndUpdate(
@@ -64,26 +65,26 @@ export const updateMuscularEndurancePushUP = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!updatedMuscularEndurancePushUP) {
-            return res.status(404).json({ message: "Muscular Endurance Push UP not found" });
+            return sendNotFoundResponse(res, "Muscular Endurance Push UP not found");
         }
-        res.status(200).json(updatedMuscularEndurancePushUP);
+        return sendSuccessResponse(res, "Muscular Endurance Push UP updated successfully", updatedMuscularEndurancePushUP);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Delete a MuscularEndurancePushUP by ID
 export const deleteMuscularEndurancePushUP = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Endurance Push UP ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Endurance Push UP ID");
     }
     try {
         const deletedMuscularEndurancePushUP = await MuscularEndurancePushUPModel.findByIdAndDelete(req.params.id);
         if (!deletedMuscularEndurancePushUP) {
-            return res.status(404).json({ message: "Muscular Endurance Push UP not found" });
+            return sendNotFoundResponse(res, "Muscular Endurance Push UP not found");
         }
-        res.status(200).json({ message: "Muscular Endurance Push UP deleted successfully" });
+        return sendSuccessResponse(res, "Muscular Endurance Push UP deleted successfully");
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };

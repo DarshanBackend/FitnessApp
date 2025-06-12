@@ -2,6 +2,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
+import { sendErrorResponse } from '../utils/ResponseUtils.js';
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -38,7 +39,6 @@ const fileFilter = (req, file, cb) => {
     cb(null, true);
 };
 
-
 const upload = multer({
     storage,
     fileFilter,
@@ -64,14 +64,24 @@ export const convertJfifToJpeg = async (req, res, next) => {
             file.path = jpegPath;
             file.filename = path.basename(jpegPath);
             file.mimetype = 'image/jpeg';
-
         }
 
         next();
     } catch (err) {
         console.error('Error in convertJfifToJpeg:', err);
-        next(err);
+        return sendErrorResponse(res, 400, err.message);
     }
-}
+};
+
+// Error handling middleware for multer
+export const handleMulterError = (err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return sendErrorResponse(res, 400, 'File size too large. Maximum size is 2MB.');
+        }
+        return sendErrorResponse(res, 400, err.message);
+    }
+    return sendErrorResponse(res, 500, err.message);
+};
 
 export default upload;

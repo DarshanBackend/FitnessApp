@@ -1,6 +1,7 @@
 import MeasurementInfoModel from "../models/measurementInfoModel.js";
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
 
 // Add a new measurement
 export const addMeasurementInfo = async (req, res) => {
@@ -25,21 +26,21 @@ export const addMeasurementInfo = async (req, res) => {
             __v: savedMeasurement.__v
         };
         
-        res.status(201).json(responseData);
+        return sendCreatedResponse(res, "Measurement added successfully", responseData);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single measurement by ID
 export const getMeasurementInfoById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Measurement ID" });
+        return sendBadRequestResponse(res, "Invalid Measurement ID");
     }
     try {
         const measurement = await MeasurementInfoModel.findById(req.params.id);
         if (!measurement) {
-            return res.status(404).json({ message: "Measurement not found" });
+            return sendNotFoundResponse(res, "Measurement not found");
         }
 
         const responseData = {
@@ -59,9 +60,9 @@ export const getMeasurementInfoById = async (req, res) => {
             __v: measurement.__v
         };
 
-        res.status(200).json(responseData);
+        return sendSuccessResponse(res, "Measurement retrieved successfully", responseData);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -71,7 +72,7 @@ export const getAllMeasurementInfo = async (req, res) => {
         const measurements = await MeasurementInfoModel.find().sort({ createdAt: -1 });
 
         if (!measurements || measurements.length === 0) {
-            return res.status(200).json({ message: "No any measurementInfo found!!" });
+            return sendSuccessResponse(res, "No measurements found", []);
         }
 
         const formattedMeasurements = measurements.map((measurement) => {
@@ -94,16 +95,16 @@ export const getAllMeasurementInfo = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedMeasurements);
+        return sendSuccessResponse(res, "Measurements retrieved successfully", formattedMeasurements);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a measurement by ID
 export const updateMeasurementInfo = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Measurement ID" });
+        return sendBadRequestResponse(res, "Invalid Measurement ID");
     }
     try {
         const updatedMeasurement = await MeasurementInfoModel.findByIdAndUpdate(
@@ -112,7 +113,7 @@ export const updateMeasurementInfo = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!updatedMeasurement) {
-            return res.status(404).json({ message: "Measurement not found" });
+            return sendNotFoundResponse(res, "Measurement not found");
         }
 
         const responseData = {
@@ -132,24 +133,24 @@ export const updateMeasurementInfo = async (req, res) => {
             __v: updatedMeasurement.__v
         };
 
-        res.status(200).json(responseData);
+        return sendSuccessResponse(res, "Measurement updated successfully", responseData);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Delete a measurement by ID
 export const deleteMeasurementInfo = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Measurement ID" });
+        return sendBadRequestResponse(res, "Invalid Measurement ID");
     }
     try {
         const deletedMeasurement = await MeasurementInfoModel.findByIdAndDelete(req.params.id);
         if (!deletedMeasurement) {
-            return res.status(404).json({ message: "Measurement not found" });
+            return sendNotFoundResponse(res, "Measurement not found");
         }
-        res.status(200).json({ message: "Measurement deleted successfully" });
+        return sendSuccessResponse(res, "Measurement deleted successfully");
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };

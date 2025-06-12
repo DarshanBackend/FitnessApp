@@ -1,6 +1,7 @@
 import MuscularStrengthModel from '../models/MuscularStrengthModel.js';
 import mongoose from 'mongoose';
 import dayjs from "dayjs";
+import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendNotFoundResponse, sendCreatedResponse } from '../utils/ResponseUtils.js';
 
 
 // Add a new muscularStrength
@@ -8,25 +9,25 @@ export const addmuscularStrength = async (req, res) => {
     try {
         const newmuscularStrength = new MuscularStrengthModel(req.body);
         const savedmuscularStrength = await newmuscularStrength.save();
-        res.status(201).json(savedmuscularStrength);
+        return sendCreatedResponse(res, "Muscular Strength record added successfully", savedmuscularStrength);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Get a single muscularStrength by ID
 export const getmuscularStrengthById = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Strength ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Strength ID");
     }
     try {
         const muscularStrength = await MuscularStrengthModel.findById(req.params.id);
         if (!muscularStrength) {
-            return res.status(404).json({ message: "Muscular Strength not found" });
+            return sendNotFoundResponse(res, "Muscular Strength not found");
         }
-        res.status(200).json(muscularStrength);
+        return sendSuccessResponse(res, "Muscular Strength retrieved successfully", muscularStrength);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
@@ -36,7 +37,7 @@ export const getAllmuscularStrength = async (req, res) => {
         const muscularStrengths = await MuscularStrengthModel.find().sort({ createdAt: -1 });
 
         if (!muscularStrengths || muscularStrengths.length === 0) {
-            return res.status(200).json({ message: "No any Muscular Strength found!!" });
+            return sendSuccessResponse(res, "No Muscular Strength records found", []);
         }
 
         const formattedmuscularStrengths = muscularStrengths.map((muscularStrength) => {
@@ -46,16 +47,16 @@ export const getAllmuscularStrength = async (req, res) => {
             };
         });
 
-        res.status(200).json(formattedmuscularStrengths);
+        return sendSuccessResponse(res, "Muscular Strength records retrieved successfully", formattedmuscularStrengths);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
 // Update a muscularStrength by ID
 export const updatemuscularStrength = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Strength ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Strength ID");
     }
     try {
         const updatedmuscularStrength = await MuscularStrengthModel.findByIdAndUpdate(
@@ -64,26 +65,26 @@ export const updatemuscularStrength = async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!updatedmuscularStrength) {
-            return res.status(404).json({ message: "Muscular Strength not found" });
+            return sendNotFoundResponse(res, "Muscular Strength not found");
         }
-        res.status(200).json(updatedmuscularStrength);
+        return sendSuccessResponse(res, "Muscular Strength updated successfully", updatedmuscularStrength);
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        return sendErrorResponse(res, 400, error.message);
     }
 };
 
 // Delete a muscularStrength by ID
 export const deletemuscularStrength = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: "Invalid Muscular Strength ID" });
+        return sendBadRequestResponse(res, "Invalid Muscular Strength ID");
     }
     try {
         const deletedmuscularStrength = await MuscularStrengthModel.findByIdAndDelete(req.params.id);
         if (!deletedmuscularStrength) {
-            return res.status(404).json({ message: "Muscular Strength not found" });
+            return sendNotFoundResponse(res, "Muscular Strength not found");
         }
-        res.status(200).json({ message: "Muscular Strength deleted successfully" });
+        return sendSuccessResponse(res, "Muscular Strength deleted successfully");
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return sendErrorResponse(res, 500, error.message);
     }
 };
