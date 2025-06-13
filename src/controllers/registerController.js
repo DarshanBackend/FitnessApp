@@ -33,7 +33,8 @@ export const createRegister = async (req, res) => {
             birth_date: birthDate,
             password: hashedPassword,
             type,
-            isAdmin: type === 'trainer'
+            isAdmin: type === 'trainer',
+            trainer_image: null
         });
 
         return sendCreatedResponse(res, "Registration successful", newRegister);
