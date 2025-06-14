@@ -6,17 +6,13 @@ import { sendSuccessResponse, sendErrorResponse, sendCreatedResponse, sendNotFou
 // Add a new WaisttoHipRatio
 export const addWaisttoHipRatio = async (req, res) => {
     try {
-      
-
         let memberId;
         if (req.trainer.isAdmin) {
             if (!req.body.memberId) {
-              
                 return sendBadRequestResponse(res, "memberId is required for trainers to add waist to hip ratio data for a member.");
             }
 
             if (!mongoose.Types.ObjectId.isValid(req.body.memberId)) {
-            
                 return sendBadRequestResponse(res, "Invalid memberId format");
             }
             memberId = req.body.memberId;
@@ -24,16 +20,12 @@ export const addWaisttoHipRatio = async (req, res) => {
             memberId = req.trainer._id;
         }
 
-      
         const newWaisttoHipRatio = new WaisttoHipRatioModel({
             ...req.body,
             memberId: memberId
         });
 
-
         const savedWaisttoHipRatio = await newWaisttoHipRatio.save();
-       
-
         return sendCreatedResponse(res, "Waist to Hip Ratio added successfully", savedWaisttoHipRatio);
     } catch (error) {
         console.error("Error adding waist to hip ratio record:", error);
@@ -41,18 +33,25 @@ export const addWaisttoHipRatio = async (req, res) => {
     }
 };
 
-// Get a single WaisttoHipRatio by ID
+// Get WaisttoHipRatio by ID
 export const getWaisttoHipRatioById = async (req, res) => {
     try {
-
         // Use the validated member from middleware
-        const waisttoHipRatio = await WaisttoHipRatioModel.findOne({ memberId: req.member._id });
+        const waisttoHipRatios = await WaisttoHipRatioModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
    
-        if (!waisttoHipRatio) {
-            return sendNotFoundResponse(res, "Waist to Hip Ratio not found");
+        if (!waisttoHipRatios || waisttoHipRatios.length === 0) {
+            return sendNotFoundResponse(res, "No waist to hip ratio records found for this member");
         }
 
-        return sendSuccessResponse(res, "Waist to Hip Ratio retrieved successfully", waisttoHipRatio);
+        // Format measurements with dates
+        const formattedWaisttoHipRatios = waisttoHipRatios.map((waisttoHipRatio) => {
+            return {
+                ...waisttoHipRatio._doc,
+                formattedDate: dayjs(waisttoHipRatio.createdAt).format("DD MMM YYYY")
+            };
+        });
+
+        return sendSuccessResponse(res, "Waist to Hip Ratio records retrieved successfully", formattedWaisttoHipRatios);
     } catch (error) {
         console.error('Error getting waist to hip ratio:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -62,84 +61,96 @@ export const getWaisttoHipRatioById = async (req, res) => {
 // Get all WaisttoHipRatios
 export const getAllWaisttoHipRatio = async (req, res) => {
     try {
-        
         let query = {};
+        let responseMessage = "All waist to hip ratios retrieved successfully";
+
         if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id;
+            // Member: Show their specific measurements
+            query = { memberId: req.trainer._id };
+            responseMessage = "Your waist to hip ratios retrieved successfully";
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific measurements
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { memberId: req.query.memberId };
+            responseMessage = `Waist to hip ratios for member ${req.query.memberId} retrieved successfully`;
         }
 
-
-        const WaisttoHipRatios = await WaisttoHipRatioModel.find(query).sort({ createdAt: -1 });
+        const waisttoHipRatios = await WaisttoHipRatioModel.find(query).sort({ createdAt: -1 });
     
-        if (!WaisttoHipRatios || WaisttoHipRatios.length === 0) {
-          
-            return sendSuccessResponse(res, "No Waist to Hip Ratios found", []);
+        if (!waisttoHipRatios || waisttoHipRatios.length === 0) {
+            return sendSuccessResponse(res, "No waist to hip ratios found", []);
         }
 
-        const formattedWaisttoHipRatios = WaisttoHipRatios.map((WaisttoHipRatio) => {
+        const formattedWaisttoHipRatios = waisttoHipRatios.map((waisttoHipRatio) => {
             return {
-                ...WaisttoHipRatio._doc,
-                formattedDate: dayjs(WaisttoHipRatio.createdAt).format("DD MMM YYYY"),
+                ...waisttoHipRatio._doc,
+                formattedDate: dayjs(waisttoHipRatio.createdAt).format("DD MMM YYYY")
             };
         });
 
-       
-
-        return sendSuccessResponse(res, "Waist to Hip Ratios retrieved successfully", formattedWaisttoHipRatios);
+        return sendSuccessResponse(res, responseMessage, formattedWaisttoHipRatios);
     } catch (error) {
         console.error("Error retrieving all waist to hip ratio records:", error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
 
-// Update a WaisttoHipRatio by ID
+// Update WaisttoHipRatio
 export const updateWaisttoHipRatio = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid Waist to Hip Ratio ID");
-    }
     try {
-        let query = { _id: req.params.id };
+        const { id } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendBadRequestResponse(res, "Invalid Waist to Hip Ratio ID");
+        }
+
+        let query = { _id: id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
-
-       
 
         const updatedWaisttoHipRatio = await WaisttoHipRatioModel.findOneAndUpdate(
             query,
-            req.body,
-            { new: true, runValidators: true }
+            { ...req.body },
+            { new: true }
         );
+
         if (!updatedWaisttoHipRatio) {
-            return sendNotFoundResponse(res, "Waist to Hip Ratio not found or you do not have permission to update it.");
+            return sendNotFoundResponse(res, "Waist to Hip Ratio not found or you do not have permission to update it");
         }
+
         return sendSuccessResponse(res, "Waist to Hip Ratio updated successfully", updatedWaisttoHipRatio);
     } catch (error) {
-        console.error("Error updating waist to hip ratio record:", error);
-        return sendErrorResponse(res, 400, error.message);
+        console.error('Error updating waist to hip ratio record:', error);
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
-// Delete a WaisttoHipRatio by ID
+// Delete WaisttoHipRatio
 export const deleteWaisttoHipRatio = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid Waist to Hip Ratio ID");
-    }
     try {
-        let query = { _id: req.params.id };
+        const { id } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendBadRequestResponse(res, "Invalid Waist to Hip Ratio ID");
+        }
+
+        let query = { _id: id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
 
-       
-
         const deletedWaisttoHipRatio = await WaisttoHipRatioModel.findOneAndDelete(query);
+
         if (!deletedWaisttoHipRatio) {
-            return sendNotFoundResponse(res, "Waist to Hip Ratio not found or you do not have permission to delete it.");
+            return sendNotFoundResponse(res, "Waist to Hip Ratio not found or you do not have permission to delete it");
         }
+
         return sendSuccessResponse(res, "Waist to Hip Ratio deleted successfully");
     } catch (error) {
-        console.error("Error deleting waist to hip ratio record:", error);
+        console.error('Error deleting waist to hip ratio record:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };

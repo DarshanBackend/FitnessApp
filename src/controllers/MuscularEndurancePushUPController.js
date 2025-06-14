@@ -37,21 +37,22 @@ export const addMuscularEndurancePushUP = async (req, res) => {
 // Get a single MuscularEndurancePushUP by ID
 export const getMuscularEndurancePushUPById = async (req, res) => {
     try {
-        const { id } = req.params;
-     
-        let query = { _id: id };
-        if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id;
-        }
-
-        const muscularEndurancePushUP = await MuscularEndurancePushUPModel.findOne(query);
+        // Use the validated member from middleware
+        const muscularEndurancePushUPs = await MuscularEndurancePushUPModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
       
-        
-        if (!muscularEndurancePushUP) {
-            return sendNotFoundResponse(res, "Muscular Endurance Push UP record not found");
+        if (!muscularEndurancePushUPs || muscularEndurancePushUPs.length === 0) {
+            return sendNotFoundResponse(res, "No muscular endurance push-up records found for this member");
         }
 
-        return sendSuccessResponse(res, "Muscular Endurance Push UP record retrieved successfully", muscularEndurancePushUP);
+        // Format measurements with dates
+        const formattedMuscularEndurancePushUPs = muscularEndurancePushUPs.map((muscularEndurancePushUP) => {
+            return {
+                ...muscularEndurancePushUP._doc,
+                formattedDate: dayjs(muscularEndurancePushUP.createdAt).format("DD MMM YYYY")
+            };
+        });
+
+        return sendSuccessResponse(res, "Muscular endurance push-up records retrieved successfully", formattedMuscularEndurancePushUPs);
     } catch (error) {
         console.error('Error getting muscular endurance push-up record:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -61,24 +62,36 @@ export const getMuscularEndurancePushUPById = async (req, res) => {
 // Get all MuscularEndurancePushUPs
 export const getAllMuscularEndurancePushUP = async (req, res) => {
     try {
+        let query = {};
+        let responseMessage = "All muscular endurance push-up records retrieved successfully";
+
         if (!req.trainer.isAdmin) {
-            return sendForbiddenResponse(res, "Access denied. Only trainers can view all muscular endurance push-up records.");
+            // Member: Show their specific measurements
+            query = { memberId: req.trainer._id };
+            responseMessage = "Your muscular endurance push-up records retrieved successfully";
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific measurements
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { memberId: req.query.memberId };
+            responseMessage = `Muscular endurance push-up records for member ${req.query.memberId} retrieved successfully`;
         }
         
-        const muscularEndurancePushUPs = await MuscularEndurancePushUPModel.find().sort({ createdAt: -1 });
+        const muscularEndurancePushUPs = await MuscularEndurancePushUPModel.find(query).sort({ createdAt: -1 });
         
         if (!muscularEndurancePushUPs || muscularEndurancePushUPs.length === 0) {
-            return sendSuccessResponse(res, "No Muscular Endurance Push UP records found", []);
+            return sendSuccessResponse(res, "No muscular endurance push-up records found", []);
         }
 
         const formattedMuscularEndurancePushUPs = muscularEndurancePushUPs.map((muscularEndurancePushUP) => {
             return {
                 ...muscularEndurancePushUP._doc,
-                formattedDate: dayjs(muscularEndurancePushUP.createdAt).format("DD MMM YYYY"),
+                formattedDate: dayjs(muscularEndurancePushUP.createdAt).format("DD MMM YYYY")
             };
         });
 
-        return sendSuccessResponse(res, "Muscular Endurance Push UP records retrieved successfully", formattedMuscularEndurancePushUPs);
+        return sendSuccessResponse(res, responseMessage, formattedMuscularEndurancePushUPs);
     } catch (error) {
         console.error('Error getting all muscular endurance push-up records:', error);
         return sendErrorResponse(res, 500, error.message);

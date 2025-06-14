@@ -20,14 +20,6 @@ export const addFlexiblitiy = async (req, res) => {
             memberId = req.trainer._id;
         }
 
-        // Check if flexibility record already exists for this member
-        const existingFlexibility = await FlexiblitiyModel.findOne({ memberId });
-        if (existingFlexibility) {
-            return sendBadRequestResponse(res, "Flexibility record already exists for this member. Please update instead of creating new.");
-        }
-
-       
-
         const newFlexiblitiy = new FlexiblitiyModel({
             ...req.body,
             memberId: memberId
@@ -44,16 +36,22 @@ export const addFlexiblitiy = async (req, res) => {
 // Get a single Flexibility by ID
 export const getFlexiblitiyById = async (req, res) => {
     try {
-     
         // Use the validated member from middleware
-        const flexibility = await FlexiblitiyModel.findOne({ memberId: req.member._id });
+        const flexibilities = await FlexiblitiyModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
        
-        
-        if (!flexibility) {
-            return sendNotFoundResponse(res, "Flexibility record not found");
+        if (!flexibilities || flexibilities.length === 0) {
+            return sendNotFoundResponse(res, "No flexibility records found for this member");
         }
 
-        return sendSuccessResponse(res, "Flexibility record retrieved successfully", flexibility);
+        // Format measurements with dates
+        const formattedFlexibilities = flexibilities.map((flexibility) => {
+            return {
+                ...flexibility._doc,
+                formattedDate: dayjs(flexibility.createdAt).format("DD MMM YYYY")
+            };
+        });
+
+        return sendSuccessResponse(res, "Flexibility records retrieved successfully", formattedFlexibilities);
     } catch (error) {
         console.error('Error getting flexibility record:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -63,17 +61,36 @@ export const getFlexiblitiyById = async (req, res) => {
 // Get all Flexibility records
 export const getAllFlexiblitiy = async (req, res) => {
     try {
+        let query = {};
+        let responseMessage = "All flexibility records retrieved successfully";
+
         if (!req.trainer.isAdmin) {
-            return sendForbiddenResponse(res, "Access denied. Only trainers can view all flexibility records.");
+            // Member: Show their specific measurements
+            query = { memberId: req.trainer._id };
+            responseMessage = "Your flexibility records retrieved successfully";
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific measurements
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { memberId: req.query.memberId };
+            responseMessage = `Flexibility records for member ${req.query.memberId} retrieved successfully`;
         }
         
-        const flexibilities = await FlexiblitiyModel.find();
+        const flexibilities = await FlexiblitiyModel.find(query).sort({ createdAt: -1 });
         
         if (!flexibilities || flexibilities.length === 0) {
             return sendSuccessResponse(res, "No flexibility records found", []);
         }
 
-        return sendSuccessResponse(res, "Flexibility records fetched successfully", flexibilities);
+        const formattedFlexibilities = flexibilities.map((flexibility) => {
+            return {
+                ...flexibility._doc,
+                formattedDate: dayjs(flexibility.createdAt).format("DD MMM YYYY")
+            };
+        });
+
+        return sendSuccessResponse(res, responseMessage, formattedFlexibilities);
     } catch (error) {
         console.error('Error getting all flexibility records:', error);
         return sendErrorResponse(res, 500, error.message);

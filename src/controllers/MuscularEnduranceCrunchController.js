@@ -38,16 +38,22 @@ export const addMuscularEnduranceCrunch = async (req, res) => {
 // Get a single MuscularEnduranceCrunch by ID
 export const getMuscularEnduranceCrunchById = async (req, res) => {
     try {
-       
         // Use the validated member from middleware
-        const muscularEnduranceCrunch = await MuscularEnduranceCrunchModel.findOne({ memberId: req.member._id });
+        const muscularEnduranceCrunches = await MuscularEnduranceCrunchModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
       
-        
-        if (!muscularEnduranceCrunch) {
-            return sendNotFoundResponse(res, "Muscular Endurance Crunch record not found");
+        if (!muscularEnduranceCrunches || muscularEnduranceCrunches.length === 0) {
+            return sendNotFoundResponse(res, "No muscular endurance crunch records found for this member");
         }
 
-        return sendSuccessResponse(res, "Muscular Endurance Crunch record retrieved successfully", muscularEnduranceCrunch);
+        // Format measurements with dates
+        const formattedMuscularEnduranceCrunches = muscularEnduranceCrunches.map((muscularEnduranceCrunch) => {
+            return {
+                ...muscularEnduranceCrunch._doc,
+                formattedDate: dayjs(muscularEnduranceCrunch.createdAt).format("DD MMM YYYY")
+            };
+        });
+
+        return sendSuccessResponse(res, "Muscular endurance crunch records retrieved successfully", formattedMuscularEnduranceCrunches);
     } catch (error) {
         console.error('Error getting muscular endurance crunch record:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -57,24 +63,36 @@ export const getMuscularEnduranceCrunchById = async (req, res) => {
 // Get all MuscularEnduranceCrunch records
 export const getAllMuscularEnduranceCrunch = async (req, res) => {
     try {
+        let query = {};
+        let responseMessage = "All muscular endurance crunch records retrieved successfully";
+
         if (!req.trainer.isAdmin) {
-            return sendForbiddenResponse(res, "Access denied. Only trainers can view all muscular endurance crunch records.");
+            // Member: Show their specific measurements
+            query = { memberId: req.trainer._id };
+            responseMessage = "Your muscular endurance crunch records retrieved successfully";
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific measurements
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { memberId: req.query.memberId };
+            responseMessage = `Muscular endurance crunch records for member ${req.query.memberId} retrieved successfully`;
         }
         
-        const muscularEnduranceCrunches = await MuscularEnduranceCrunchModel.find().sort({ createdAt: -1 });
+        const muscularEnduranceCrunches = await MuscularEnduranceCrunchModel.find(query).sort({ createdAt: -1 });
         
         if (!muscularEnduranceCrunches || muscularEnduranceCrunches.length === 0) {
-            return sendSuccessResponse(res, "No Muscular Endurance Crunch records found", []);
+            return sendSuccessResponse(res, "No muscular endurance crunch records found", []);
         }
 
         const formattedMuscularEnduranceCrunches = muscularEnduranceCrunches.map((muscularEnduranceCrunch) => {
             return {
                 ...muscularEnduranceCrunch._doc,
-                formattedDate: dayjs(muscularEnduranceCrunch.createdAt).format("DD MMM YYYY"),
+                formattedDate: dayjs(muscularEnduranceCrunch.createdAt).format("DD MMM YYYY")
             };
         });
 
-        return sendSuccessResponse(res, "Muscular Endurance Crunch records retrieved successfully", formattedMuscularEnduranceCrunches);
+        return sendSuccessResponse(res, responseMessage, formattedMuscularEnduranceCrunches);
     } catch (error) {
         console.error('Error getting all muscular endurance crunch records:', error);
         return sendErrorResponse(res, 500, error.message);

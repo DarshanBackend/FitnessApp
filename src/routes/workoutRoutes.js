@@ -3,9 +3,8 @@ import {
     addWorkout,
     getWorkoutsByDay,
     getAllWorkout,
-    updateWorkout,
-    updateWorkoutByDay,
-    deleteWorkoutsByDay,
+    updateWorkoutById,
+    deleteWorkoutById
 } from "../controllers/workoutController.js";
 import { TrainerAuth, isAdmin } from "../middlewares/auth.js";
 
@@ -13,9 +12,8 @@ const workoutRouter = express.Router();
 
 // Only trainers can add, update, and delete workouts
 workoutRouter.post("/addWorkout", TrainerAuth, isAdmin, addWorkout);
-workoutRouter.put("/updateWorkout/:id", TrainerAuth, isAdmin, updateWorkout);
-workoutRouter.put("/updateWorkoutByDay/:day", TrainerAuth, isAdmin, updateWorkoutByDay);
-workoutRouter.delete("/deleteWorkoutsByDay/:day", TrainerAuth, isAdmin, deleteWorkoutsByDay);
+workoutRouter.put("/updateWorkoutById/:id", TrainerAuth, isAdmin, updateWorkoutById);
+workoutRouter.delete("/deleteWorkoutById/:id", TrainerAuth, isAdmin, deleteWorkoutById);
 
 // Both trainers and members can view workouts
 // Trainers can view any member's workouts by providing memberId in query

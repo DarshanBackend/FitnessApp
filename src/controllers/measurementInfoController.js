@@ -20,14 +20,6 @@ export const addMeasurementInfo = async (req, res) => {
             memberId = req.trainer._id;
         }
 
-        // Check if measurement info already exists for this member
-        const existingMeasurement = await MeasurementInfoModel.findOne({ memberId });
-        if (existingMeasurement) {
-            return sendBadRequestResponse(res, "Measurement info already exists for this member. Please update instead of creating new.");
-        }
-
-       
-
         const newMeasurementInfo = new MeasurementInfoModel({
             ...req.body,
             memberId: memberId
@@ -44,17 +36,24 @@ export const addMeasurementInfo = async (req, res) => {
 // Get measurement info by ID
 export const getMeasurementInfoById = async (req, res) => {
     try {
-       
         // Use the validated member from middleware
-        const measurementInfo = await MeasurementInfoModel.findOne({ memberId: req.member._id });
+        const measurements = await MeasurementInfoModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
      
-        if (!measurementInfo) {
-            return sendNotFoundResponse(res, "Measurement info not found");
+        if (!measurements || measurements.length === 0) {
+            return sendNotFoundResponse(res, "No measurements found for this member");
         }
 
-        return sendSuccessResponse(res, "Measurement info retrieved successfully", measurementInfo);
+        // Format measurements with dates
+        const formattedMeasurements = measurements.map((measurement) => {
+            return {
+                ...measurement._doc,
+                formattedDate: dayjs(measurement.createdAt).format("DD MMM YYYY"),
+            };
+        });
+
+        return sendSuccessResponse(res, "Measurements retrieved successfully", formattedMeasurements);
     } catch (error) {
-        console.error('Error getting measurement info:', error);
+        console.error('Error getting measurements:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
@@ -62,19 +61,40 @@ export const getMeasurementInfoById = async (req, res) => {
 // Get all measurement info
 export const getAllMeasurementInfo = async (req, res) => {
     try {
+        let query = {};
+        let responseMessage = "All measurements retrieved successfully";
+
         if (!req.trainer.isAdmin) {
-            return sendForbiddenResponse(res, "Access denied. Only trainers can view all measurements.");
-        }
-        
-        const measurementInfos = await MeasurementInfoModel.find();
-        
-        if (!measurementInfos || measurementInfos.length === 0) {
-            return sendSuccessResponse(res, "No measurement info found", []);
+            // Member: Show their specific measurements
+            query = { memberId: req.trainer._id };
+            responseMessage = "Your measurements retrieved successfully";
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific measurements
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { memberId: req.query.memberId };
+            responseMessage = `Measurements for member ${req.query.memberId} retrieved successfully`;
         }
 
-        return sendSuccessResponse(res, "Measurement info fetched successfully", measurementInfos);
+        const measurements = await MeasurementInfoModel.find(query).sort({ createdAt: -1 });
+        
+        if (!measurements || measurements.length === 0) {
+            return sendSuccessResponse(res, "No measurements found", []);
+        }
+
+        // Format measurements with dates
+        const formattedMeasurements = measurements.map((measurement) => {
+            return {
+                ...measurement._doc,
+                formattedDate: dayjs(measurement.createdAt).format("DD MMM YYYY"),
+                addedDate: dayjs(measurement.createdAt).format("DD MMM YYYY")
+            };
+        });
+
+        return sendSuccessResponse(res, responseMessage, formattedMeasurements);
     } catch (error) {
-        console.error('Error getting all measurement info:', error);
+        console.error('Error getting all measurements:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };

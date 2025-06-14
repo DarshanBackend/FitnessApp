@@ -65,49 +65,104 @@ export const getdietById = async (req, res) => {
 // Get all diets
 export const getAlldiet = async (req, res) => {
     try {
+        let query = {};
+        let responseMessage = "All diet plans retrieved successfully";
+
         if (!req.trainer.isAdmin) {
-            return sendForbiddenResponse(res, "Access denied. Only trainers can view all diet plans.");
+            // Member: Show their specific diet plans
+            query = { memberId: req.trainer._id };
+            responseMessage = "Your diet plans retrieved successfully";
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific diet plans
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { memberId: req.query.memberId };
+            responseMessage = `Diet plans for member ${req.query.memberId} retrieved successfully`;
+        } else {
+            // Trainer without memberId query: Show all diet plans
+            query = {};
         }
 
-        const diets = await DietModel.find().sort({ createdAt: -1 });
+        const diets = await DietModel.find(query).sort({ day: 1, createdAt: 1 });
 
         if (!diets || diets.length === 0) {
             return sendSuccessResponse(res, "No diet plans found", []);
         }
 
-        return sendSuccessResponse(res, "Diet plans retrieved successfully", diets);
+        // Group diets by day for structured response
+        const dietsByDay = diets.reduce((acc, diet) => {
+            const day = diet.day;
+            if (!acc[day]) {
+                acc[day] = [];
+            }
+            acc[day].push(diet);
+            return acc;
+        }, {});
+
+        return sendSuccessResponse(res, responseMessage, dietsByDay);
     } catch (error) {
         console.error('Error getting all diet plans:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
 
-// Get diet by day
+// Get diet by day (for members and trainers)
 export const getDietByDay = async (req, res) => {
     try {
         const { day } = req.params;
-   
-        // Convert day to lowercase for case-insensitive matching
         const dayLower = day.toLowerCase();
-       
 
-        // Build query based on user type
-        let query = { day: dayLower };
+        // Validate day format
+        const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+        if (!validDays.includes(dayLower)) {
+            return sendBadRequestResponse(res, "Invalid day format. Use: monday, tuesday, wednesday, thursday, friday, saturday, sunday");
+        }
+
+        let query = {};
+        let responseMessage = `Diet plans for ${dayLower} retrieved successfully`;
+
         if (!req.trainer.isAdmin) {
-            query.memberId = req.member._id;
+            // Member: Show their specific diet and all general diets
+            query = { 
+                day: dayLower,
+                $or: [{ memberId: req.trainer._id }, { memberId: null }] 
+            };
+            responseMessage = `Your diet plans for ${dayLower} retrieved successfully`;
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific diet and all general diets
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { 
+                day: dayLower,
+                $or: [{ memberId: req.query.memberId }, { memberId: null }] 
+            };
+            responseMessage = `Diet plans for member ${req.query.memberId} on ${dayLower} retrieved successfully`;
+        } else {
+            // Trainer without memberId query: Show all diets for the day
+            query = { day: dayLower };
         }
-      
 
-        const diet = await DietModel.findOne(query);
-       
-        if (!diet) {
-            
-            return sendNotFoundResponse(res, "Diet plan not found for this day");
+        const diets = await DietModel.find(query).sort({ createdAt: 1 });
+
+        if (!diets || diets.length === 0) {
+            return sendSuccessResponse(res, `No diet plans found for ${dayLower}`, { [dayLower]: [] });
         }
 
-        return sendSuccessResponse(res, "Diet plan retrieved successfully", diet);
+        // Group diets by day for structured response
+        const dietsByDay = diets.reduce((acc, diet) => {
+            const day = diet.day;
+            if (!acc[day]) {
+                acc[day] = [];
+            }
+            acc[day].push(diet);
+            return acc;
+        }, {});
+
+        return sendSuccessResponse(res, responseMessage, dietsByDay);
     } catch (error) {
-        console.error('Error getting diet plan by day:', error);
+        console.error("Error getting diet plans by day:", error);
         return sendErrorResponse(res, 500, error.message);
     }
 };

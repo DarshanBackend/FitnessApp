@@ -38,16 +38,22 @@ export const addvo2MaxRockPortTest = async (req, res) => {
 // Get a single vo2MaxRockPortTest by ID
 export const getvo2MaxRockPortTestById = async (req, res) => {
     try {
-       
         // Use the validated member from middleware
-        const vo2MaxRockPortTest = await Vo2MaxRockPortTestModel.findOne({ memberId: req.member._id });
+        const vo2MaxRockPortTests = await Vo2MaxRockPortTestModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
        
-        
-        if (!vo2MaxRockPortTest) {
-            return sendNotFoundResponse(res, "VO2 Max Rock Port Test not found");
+        if (!vo2MaxRockPortTests || vo2MaxRockPortTests.length === 0) {
+            return sendNotFoundResponse(res, "No VO2 Max Rock Port Test records found for this member");
         }
 
-        return sendSuccessResponse(res, "VO2 Max Rock Port Test retrieved successfully", vo2MaxRockPortTest);
+        // Format measurements with dates
+        const formattedVo2MaxRockPortTests = vo2MaxRockPortTests.map((vo2MaxRockPortTest) => {
+            return {
+                ...vo2MaxRockPortTest._doc,
+                formattedDate: dayjs(vo2MaxRockPortTest.createdAt).format("DD MMM YYYY")
+            };
+        });
+
+        return sendSuccessResponse(res, "VO2 Max Rock Port Test records retrieved successfully", formattedVo2MaxRockPortTests);
     } catch (error) {
         console.error('Error getting VO2 Max Rock Port Test:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -58,10 +64,20 @@ export const getvo2MaxRockPortTestById = async (req, res) => {
 export const getAllvo2MaxRockPortTest = async (req, res) => {
     try {
         let query = {};
-        if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id;
-        }
+        let responseMessage = "All VO2 Max Rock Port Test records retrieved successfully";
 
+        if (!req.trainer.isAdmin) {
+            // Member: Show their specific measurements
+            query = { memberId: req.trainer._id };
+            responseMessage = "Your VO2 Max Rock Port Test records retrieved successfully";
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific measurements
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { memberId: req.query.memberId };
+            responseMessage = `VO2 Max Rock Port Test records for member ${req.query.memberId} retrieved successfully`;
+        }
 
         const vo2MaxRockPortTests = await Vo2MaxRockPortTestModel.find(query).sort({ createdAt: -1 });
 
@@ -69,68 +85,74 @@ export const getAllvo2MaxRockPortTest = async (req, res) => {
             return sendSuccessResponse(res, "No VO2 Max Rock Port Test records found", []);
         }
 
-        const formattedvo2MaxRockPortTests = vo2MaxRockPortTests.map((vo2MaxRockPortTest) => {
+        const formattedVo2MaxRockPortTests = vo2MaxRockPortTests.map((vo2MaxRockPortTest) => {
             return {
                 ...vo2MaxRockPortTest._doc,
-                formattedDate: dayjs(vo2MaxRockPortTest.createdAt).format("DD MMM YYYY"),
+                formattedDate: dayjs(vo2MaxRockPortTest.createdAt).format("DD MMM YYYY")
             };
         });
 
-        return sendSuccessResponse(res, "VO2 Max Rock Port Test records retrieved successfully", formattedvo2MaxRockPortTests);
+        return sendSuccessResponse(res, responseMessage, formattedVo2MaxRockPortTests);
     } catch (error) {
         console.error("Error retrieving all VO2 Max Rock Port Test records:", error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
 
-// Update a vo2MaxRockPortTest by ID
+// Update vo2MaxRockPortTest
 export const updatevo2MaxRockPortTest = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid VO2 Max Rock Port Test ID");
-    }
     try {
-        let query = { _id: req.params.id };
+        const { id } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendBadRequestResponse(res, "Invalid VO2 Max Rock Port Test ID");
+        }
+
+        let query = { _id: id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
-
-       
 
         const updatedvo2MaxRockPortTest = await Vo2MaxRockPortTestModel.findOneAndUpdate(
             query,
-            req.body,
-            { new: true, runValidators: true }
+            { ...req.body },
+            { new: true }
         );
+
         if (!updatedvo2MaxRockPortTest) {
-            return sendNotFoundResponse(res, "VO2 Max Rock Port Test not found or you do not have permission to update it.");
+            return sendNotFoundResponse(res, "VO2 Max Rock Port Test not found or you do not have permission to update it");
         }
+
         return sendSuccessResponse(res, "VO2 Max Rock Port Test updated successfully", updatedvo2MaxRockPortTest);
     } catch (error) {
-        console.error("Error updating VO2 Max Rock Port Test record:", error);
-        return sendErrorResponse(res, 400, error.message);
+        console.error('Error updating VO2 Max Rock Port Test:', error);
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
-// Delete a vo2MaxRockPortTest by ID
+// Delete vo2MaxRockPortTest
 export const deletevo2MaxRockPortTest = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid VO2 Max Rock Port Test ID");
-    }
     try {
-        let query = { _id: req.params.id };
+        const { id } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendBadRequestResponse(res, "Invalid VO2 Max Rock Port Test ID");
+        }
+
+        let query = { _id: id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
 
-     
-
         const deletedvo2MaxRockPortTest = await Vo2MaxRockPortTestModel.findOneAndDelete(query);
+
         if (!deletedvo2MaxRockPortTest) {
-            return sendNotFoundResponse(res, "VO2 Max Rock Port Test not found or you do not have permission to delete it.");
+            return sendNotFoundResponse(res, "VO2 Max Rock Port Test not found or you do not have permission to delete it");
         }
+
         return sendSuccessResponse(res, "VO2 Max Rock Port Test deleted successfully");
     } catch (error) {
-        console.error("Error deleting VO2 Max Rock Port Test record:", error);
+        console.error('Error deleting VO2 Max Rock Port Test:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };

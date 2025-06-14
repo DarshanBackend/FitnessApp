@@ -8,11 +8,10 @@ export const addCardiovascular = async (req, res) => {
     try {
         let memberId;
         if (req.trainer.isAdmin) {
-            // If trainer, memberId should be provided in the request body
             if (!req.body.memberId) {
                 return sendBadRequestResponse(res, "memberId is required for trainers to add cardiovascular records for a member.");
             }
-            // Validate if the memberId is a valid ObjectId
+
             if (!mongoose.Types.ObjectId.isValid(req.body.memberId)) {
                 return sendBadRequestResponse(res, "Invalid memberId format");
             }
@@ -35,20 +34,22 @@ export const addCardiovascular = async (req, res) => {
 // Get a single Cardiovascular by ID
 export const getCardiovascularById = async (req, res) => {
     try {
-        const { id } = req.params;
-     
-        let query = { _id: id };
-        if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id;
-        }
-
-        const cardiovascular = await CardiovascularModel.findOne(query);
+        // Use the validated member from middleware
+        const cardiovasculars = await CardiovascularModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
       
-        if (!cardiovascular) {
-            return sendNotFoundResponse(res, "Cardiovascular record not found");
+        if (!cardiovasculars || cardiovasculars.length === 0) {
+            return sendNotFoundResponse(res, "No cardiovascular records found for this member");
         }
 
-        return sendSuccessResponse(res, "Cardiovascular record retrieved successfully", cardiovascular);
+        // Format measurements with dates
+        const formattedCardiovasculars = cardiovasculars.map((cardiovascular) => {
+            return {
+                ...cardiovascular._doc,
+                formattedDate: dayjs(cardiovascular.createdAt).format("DD MMM YYYY")
+            };
+        });
+
+        return sendSuccessResponse(res, "Cardiovascular records retrieved successfully", formattedCardiovasculars);
     } catch (error) {
         console.error('Error getting cardiovascular record:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -58,69 +59,95 @@ export const getCardiovascularById = async (req, res) => {
 // Get all Cardiovasculars
 export const getAllCardiovascular = async (req, res) => {
     try {
+        let query = {};
+        let responseMessage = "All cardiovascular records retrieved successfully";
+
         if (!req.trainer.isAdmin) {
-            return sendForbiddenResponse(res, "Access denied. Only trainers can view all cardiovascular records.");
+            // Member: Show their specific measurements
+            query = { memberId: req.trainer._id };
+            responseMessage = "Your cardiovascular records retrieved successfully";
+        } else if (req.query.memberId) {
+            // Trainer with memberId query: Show that member's specific measurements
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            query = { memberId: req.query.memberId };
+            responseMessage = `Cardiovascular records for member ${req.query.memberId} retrieved successfully`;
         }
 
-        const cardiovasculars = await CardiovascularModel.find().sort({ createdAt: -1 });
+        const cardiovasculars = await CardiovascularModel.find(query).sort({ createdAt: -1 });
 
         if (!cardiovasculars || cardiovasculars.length === 0) {
-            return sendSuccessResponse(res, "No Cardiovascular records found", []);
+            return sendSuccessResponse(res, "No cardiovascular records found", []);
         }
 
         const formattedCardiovasculars = cardiovasculars.map((cardiovascular) => {
             return {
                 ...cardiovascular._doc,
-                formattedDate: dayjs(cardiovascular.createdAt).format("DD MMM YYYY"),
+                formattedDate: dayjs(cardiovascular.createdAt).format("DD MMM YYYY")
             };
         });
 
-        return sendSuccessResponse(res, "Cardiovascular records retrieved successfully", formattedCardiovasculars);
+        return sendSuccessResponse(res, responseMessage, formattedCardiovasculars);
     } catch (error) {
         return sendErrorResponse(res, 500, error.message);
     }
 };
 
-// Update a Cardiovascular by ID
+// Update Cardiovascular
 export const updateCardiovascular = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid Cardiovascular ID");
-    }
     try {
-        let query = { _id: req.params.id };
+        const { id } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendBadRequestResponse(res, "Invalid Cardiovascular ID");
+        }
+
+        let query = { _id: id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
+
         const updatedCardiovascular = await CardiovascularModel.findOneAndUpdate(
             query,
-            req.body,
-            { new: true, runValidators: true }
+            { ...req.body },
+            { new: true }
         );
+
         if (!updatedCardiovascular) {
-            return sendNotFoundResponse(res, "Cardiovascular not found or you do not have permission to update it.");
+            return sendNotFoundResponse(res, "Cardiovascular not found or you do not have permission to update it");
         }
+
         return sendSuccessResponse(res, "Cardiovascular record updated successfully", updatedCardiovascular);
     } catch (error) {
-        return sendErrorResponse(res, 400, error.message);
+        console.error('Error updating cardiovascular record:', error);
+        return sendErrorResponse(res, 500, error.message);
     }
 };
 
-// Delete a Cardiovascular by ID
+// Delete Cardiovascular
 export const deleteCardiovascular = async (req, res) => {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return sendBadRequestResponse(res, "Invalid Cardiovascular ID");
-    }
     try {
-        let query = { _id: req.params.id };
+        const { id } = req.params;
+        
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return sendBadRequestResponse(res, "Invalid Cardiovascular ID");
+        }
+
+        let query = { _id: id };
         if (!req.trainer.isAdmin) {
             query.memberId = req.trainer._id;
         }
+
         const deletedCardiovascular = await CardiovascularModel.findOneAndDelete(query);
+
         if (!deletedCardiovascular) {
-            return sendNotFoundResponse(res, "Cardiovascular not found or you do not have permission to delete it.");
+            return sendNotFoundResponse(res, "Cardiovascular not found or you do not have permission to delete it");
         }
-        return sendSuccessResponse(res, "Cardiovascular record deleted successfully", null);
+
+        return sendSuccessResponse(res, "Cardiovascular record deleted successfully");
     } catch (error) {
+        console.error('Error deleting cardiovascular record:', error);
         return sendErrorResponse(res, 500, error.message);
     }
 };
