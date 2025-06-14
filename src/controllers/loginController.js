@@ -41,6 +41,7 @@ export const loginUser = async (req, res) => {
             id: user._id,
             name: user.name,
             email: user.email,
+            token:token,
             type: user.type
         });
 
@@ -195,5 +196,3 @@ export const logoutUser = async (req, res) => {
         return sendErrorResponse(res, 400, error.message);
     }
 };
-
-

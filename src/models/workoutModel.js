@@ -9,7 +9,7 @@ const workoutSchema = new mongoose.Schema({
     memberId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Register',
-        required: true
+        required: false
     },
     videoTitle: {
         type: String,
