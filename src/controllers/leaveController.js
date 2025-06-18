@@ -52,7 +52,13 @@ export const getLeaveById = async (req, res) => {
         }
 
        
-        const leave = await LeaveModel.findOne(query);
+        // Populate member information only for trainers
+        let leave;
+        if (req.trainer.isAdmin) {
+            leave = await LeaveModel.findOne(query).populate('memberId', 'name email contact');
+        } else {
+            leave = await LeaveModel.findOne(query);
+        }
     
 
         if (!leave) {
@@ -60,7 +66,20 @@ export const getLeaveById = async (req, res) => {
             return sendNotFoundResponse(res, "Leave request not found or you do not have permission to view it.");
         }
 
-        return sendSuccessResponse(res, "Leave request retrieved successfully", leave);
+        // Format the response with member information for trainers
+        const formattedLeave = {
+            ...leave._doc,
+            formattedDate: dayjs(leave.date).format("DD MMM YYYY"),
+        };
+        
+        // Add member information for trainers
+        if (req.trainer.isAdmin && leave.memberId) {
+            formattedLeave.memberName = leave.memberId.name;
+            formattedLeave.memberEmail = leave.memberId.email;
+            formattedLeave.memberContact = leave.memberId.contact;
+        }
+
+        return sendSuccessResponse(res, "Leave request retrieved successfully", formattedLeave);
     } catch (error) {
         console.error('Error getting leave request by ID:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -78,7 +97,14 @@ export const getAllLeave = async (req, res) => {
         } else {
        
         }
-        const leaves = await LeaveModel.find(query).sort({ createdAt: -1 });
+        
+        // Populate member information only for trainers
+        let leaves;
+        if (req.trainer.isAdmin) {
+            leaves = await LeaveModel.find(query).populate('memberId', 'name email contact').sort({ createdAt: -1 });
+        } else {
+            leaves = await LeaveModel.find(query).sort({ createdAt: -1 });
+        }
 
         if (!leaves || leaves.length === 0) {
          
@@ -86,10 +112,19 @@ export const getAllLeave = async (req, res) => {
         }
 
         const formattedLeaves = leaves.map((leave) => {
-            return {
+            const formattedLeave = {
                 ...leave._doc,
                 formattedDate: dayjs(leave.date).format("DD MMM YYYY"),
             };
+            
+            // Add member information for trainers
+            if (req.trainer.isAdmin && leave.memberId) {
+                formattedLeave.memberName = leave.memberId.name;
+                formattedLeave.memberEmail = leave.memberId.email;
+                formattedLeave.memberContact = leave.memberId.contact;
+            }
+            
+            return formattedLeave;
         });
 
         return sendSuccessResponse(res, "Leave requests retrieved successfully", formattedLeaves);
@@ -170,7 +205,7 @@ export const updateLeaveStatus = async (req, res) => {
             return sendBadRequestResponse(res, "Invalid status provided. Must be Approved, Rejected, or Pending.");
         }
 
-        const leave = await LeaveModel.findById(req.params.id);
+        const leave = await LeaveModel.findById(req.params.id).populate('memberId', 'name email contact');
         if (!leave) {
             return sendNotFoundResponse(res, "Leave request not found.");
         }
@@ -178,7 +213,16 @@ export const updateLeaveStatus = async (req, res) => {
         leave.status = status;
         await leave.save();
 
-        return sendSuccessResponse(res, "Leave status updated successfully", leave);
+        // Format the response with member information
+        const formattedLeave = {
+            ...leave._doc,
+            memberName: leave.memberId.name,
+            memberEmail: leave.memberId.email,
+            memberContact: leave.memberId.contact,
+            formattedDate: dayjs(leave.date).format("DD MMM YYYY"),
+        };
+
+        return sendSuccessResponse(res, `Leave status updated to ${status} for member ${leave.memberId.name}`, formattedLeave);
     } catch (error) {
         return sendErrorResponse(res, 400, error.message);
     }
