@@ -38,14 +38,35 @@ export const addMuscularEnduranceCrunch = async (req, res) => {
 // Get a single MuscularEnduranceCrunch by ID
 export const getMuscularEnduranceCrunchById = async (req, res) => {
     try {
-        // Use the validated member from middleware
-        const muscularEnduranceCrunches = await MuscularEnduranceCrunchModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
-      
+        let memberId;
+        if (!req.trainer.isAdmin) {
+            // Member: can only see their own data
+            memberId = req.trainer._id;
+        } else if (req.params.id) {
+            // Trainer: must provide memberId in params
+            if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in params");
+            }
+            memberId = req.params.id;
+        } else if (req.query.memberId) {
+            // Trainer: can also provide memberId as query param
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            memberId = req.query.memberId;
+        } else {
+            // Trainer without memberId: not allowed
+            return sendBadRequestResponse(res, "Trainers must provide a memberId parameter to view a member's muscular endurance crunch records.");
+        }
+
+        // Find all records for the member
+        const muscularEnduranceCrunches = await MuscularEnduranceCrunchModel.find({ memberId }).sort({ createdAt: -1 });
+    
         if (!muscularEnduranceCrunches || muscularEnduranceCrunches.length === 0) {
             return sendNotFoundResponse(res, "No muscular endurance crunch records found for this member");
         }
 
-        // Format measurements with dates
+        // Format records with dates
         const formattedMuscularEnduranceCrunches = muscularEnduranceCrunches.map((muscularEnduranceCrunch) => {
             return {
                 ...muscularEnduranceCrunch._doc,
@@ -53,7 +74,17 @@ export const getMuscularEnduranceCrunchById = async (req, res) => {
             };
         });
 
-        return sendSuccessResponse(res, "Muscular endurance crunch records retrieved successfully", formattedMuscularEnduranceCrunches);
+        // Group records by date
+        const crunchesByDay = formattedMuscularEnduranceCrunches.reduce((acc, crunch) => {
+            const day = crunch.formattedDate;
+            if (!acc[day]) {
+                acc[day] = [];
+            }
+            acc[day].push(crunch);
+            return acc;
+        }, {});
+
+        return sendSuccessResponse(res, "Muscular endurance crunch records retrieved successfully", crunchesByDay);
     } catch (error) {
         console.error('Error getting muscular endurance crunch record:', error);
         return sendErrorResponse(res, 500, error.message);

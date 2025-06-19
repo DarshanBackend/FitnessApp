@@ -6,6 +6,7 @@ import {
     getDietByDay,
     updatediet,
     deletediet,
+    getDietsForMemberByTrainer
 } from "../controllers/dietController.js";
 import { TrainerAuth, isAdmin } from "../middlewares/auth.js";
 import { checkMemberAccess } from "../middlewares/accessControl.js";
@@ -21,5 +22,7 @@ dietRouter.get("/getAlldiet", TrainerAuth, isAdmin, getAlldiet);
 // Members can only view their own diet plans
 dietRouter.get("/getdietById/:id", TrainerAuth, checkMemberAccess, getdietById);
 dietRouter.get("/getDietByDay/:day", TrainerAuth, checkMemberAccess, getDietByDay);
+
+dietRouter.get("/getDietsForMemberByTrainer/:memberId", TrainerAuth, isAdmin, getDietsForMemberByTrainer);
 
 export default dietRouter;

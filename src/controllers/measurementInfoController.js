@@ -36,9 +36,30 @@ export const addMeasurementInfo = async (req, res) => {
 // Get measurement info by ID
 export const getMeasurementInfoById = async (req, res) => {
     try {
-        // Use the validated member from middleware
-        const measurements = await MeasurementInfoModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
-     
+        let memberId;
+        if (!req.trainer.isAdmin) {
+            // Member: can only see their own data
+            memberId = req.trainer._id;
+        } else if (req.params.id) {
+            // Trainer: must provide memberId in params
+            if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in params");
+            }
+            memberId = req.params.id;
+        } else if (req.query.memberId) {
+            // Trainer: can also provide memberId as query param
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            memberId = req.query.memberId;
+        } else {
+            // Trainer without memberId: not allowed
+            return sendBadRequestResponse(res, "Trainers must provide a memberId parameter to view a member's measurement info.");
+        }
+
+        // Find all measurements for the member
+        const measurements = await MeasurementInfoModel.find({ memberId }).sort({ createdAt: -1 });
+    
         if (!measurements || measurements.length === 0) {
             return sendNotFoundResponse(res, "No measurements found for this member");
         }
@@ -51,7 +72,17 @@ export const getMeasurementInfoById = async (req, res) => {
             };
         });
 
-        return sendSuccessResponse(res, "Measurements retrieved successfully", formattedMeasurements);
+        // Group measurements by addedDate (date only, not time)
+        const measurementsByDay = formattedMeasurements.reduce((acc, measurement) => {
+            const day = measurement.formattedDate;
+            if (!acc[day]) {
+                acc[day] = [];
+            }
+            acc[day].push(measurement);
+            return acc;
+        }, {});
+
+        return sendSuccessResponse(res, "Measurements retrieved successfully", measurementsByDay);
     } catch (error) {
         console.error('Error getting measurements:', error);
         return sendErrorResponse(res, 500, error.message);

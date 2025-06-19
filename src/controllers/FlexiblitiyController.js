@@ -25,7 +25,7 @@ export const addFlexiblitiy = async (req, res) => {
             memberId: memberId
         });
         const savedFlexiblitiy = await newFlexiblitiy.save();
-       
+
         return sendCreatedResponse(res, "Flexibility record added successfully", savedFlexiblitiy);
     } catch (error) {
         console.error('Error adding flexibility record:', error);
@@ -36,14 +36,35 @@ export const addFlexiblitiy = async (req, res) => {
 // Get a single Flexibility by ID
 export const getFlexiblitiyById = async (req, res) => {
     try {
-        // Use the validated member from middleware
-        const flexibilities = await FlexiblitiyModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
-       
+        let memberId;
+        if (!req.trainer.isAdmin) {
+            // Member: can only see their own data
+            memberId = req.trainer._id;
+        } else if (req.params.id) {
+            // Trainer: must provide memberId in params
+            if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in params");
+            }
+            memberId = req.params.id;
+        } else if (req.query.memberId) {
+            // Trainer: can also provide memberId as query param
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            memberId = req.query.memberId;
+        } else {
+            // Trainer without memberId: not allowed
+            return sendBadRequestResponse(res, "Trainers must provide a memberId parameter to view a member's flexibility records.");
+        }
+
+        // Find all records for the member
+        const flexibilities = await FlexiblitiyModel.find({ memberId }).sort({ createdAt: -1 });
+
         if (!flexibilities || flexibilities.length === 0) {
             return sendNotFoundResponse(res, "No flexibility records found for this member");
         }
 
-        // Format measurements with dates
+        // Format records with dates
         const formattedFlexibilities = flexibilities.map((flexibility) => {
             return {
                 ...flexibility._doc,
@@ -51,7 +72,17 @@ export const getFlexiblitiyById = async (req, res) => {
             };
         });
 
-        return sendSuccessResponse(res, "Flexibility records retrieved successfully", formattedFlexibilities);
+        // Group records by date
+        const flexByDay = formattedFlexibilities.reduce((acc, flex) => {
+            const day = flex.formattedDate;
+            if (!acc[day]) {
+                acc[day] = [];
+            }
+            acc[day].push(flex);
+            return acc;
+        }, {});
+
+        return sendSuccessResponse(res, "Flexibility records retrieved successfully", flexByDay);
     } catch (error) {
         console.error('Error getting flexibility record:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -76,9 +107,9 @@ export const getAllFlexiblitiy = async (req, res) => {
             query = { memberId: req.query.memberId };
             responseMessage = `Flexibility records for member ${req.query.memberId} retrieved successfully`;
         }
-        
+
         const flexibilities = await FlexiblitiyModel.find(query).sort({ createdAt: -1 });
-        
+
         if (!flexibilities || flexibilities.length === 0) {
             return sendSuccessResponse(res, "No flexibility records found", []);
         }
@@ -101,7 +132,7 @@ export const getAllFlexiblitiy = async (req, res) => {
 export const updateFlexiblitiy = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid flexibility record ID");
         }
@@ -111,7 +142,7 @@ export const updateFlexiblitiy = async (req, res) => {
             query.memberId = req.trainer._id;
         }
 
-     
+
 
         const updatedFlexiblitiy = await FlexiblitiyModel.findOneAndUpdate(
             query,
@@ -134,7 +165,7 @@ export const updateFlexiblitiy = async (req, res) => {
 export const deleteFlexiblitiy = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid flexibility record ID");
         }

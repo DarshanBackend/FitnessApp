@@ -37,14 +37,35 @@ export const addMuscularEndurancePushUP = async (req, res) => {
 // Get a single MuscularEndurancePushUP by ID
 export const getMuscularEndurancePushUPById = async (req, res) => {
     try {
-        // Use the validated member from middleware
-        const muscularEndurancePushUPs = await MuscularEndurancePushUPModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
-      
+        let memberId;
+        if (!req.trainer.isAdmin) {
+            // Member: can only see their own data
+            memberId = req.trainer._id;
+        } else if (req.params.id) {
+            // Trainer: must provide memberId in params
+            if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in params");
+            }
+            memberId = req.params.id;
+        } else if (req.query.memberId) {
+            // Trainer: can also provide memberId as query param
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            memberId = req.query.memberId;
+        } else {
+            // Trainer without memberId: not allowed
+            return sendBadRequestResponse(res, "Trainers must provide a memberId parameter to view a member's muscular endurance push-up records.");
+        }
+
+        // Find all records for the member
+        const muscularEndurancePushUPs = await MuscularEndurancePushUPModel.find({ memberId }).sort({ createdAt: -1 });
+    
         if (!muscularEndurancePushUPs || muscularEndurancePushUPs.length === 0) {
             return sendNotFoundResponse(res, "No muscular endurance push-up records found for this member");
         }
 
-        // Format measurements with dates
+        // Format records with dates
         const formattedMuscularEndurancePushUPs = muscularEndurancePushUPs.map((muscularEndurancePushUP) => {
             return {
                 ...muscularEndurancePushUP._doc,
@@ -52,7 +73,17 @@ export const getMuscularEndurancePushUPById = async (req, res) => {
             };
         });
 
-        return sendSuccessResponse(res, "Muscular endurance push-up records retrieved successfully", formattedMuscularEndurancePushUPs);
+        // Group records by date
+        const pushupsByDay = formattedMuscularEndurancePushUPs.reduce((acc, pushup) => {
+            const day = pushup.formattedDate;
+            if (!acc[day]) {
+                acc[day] = [];
+            }
+            acc[day].push(pushup);
+            return acc;
+        }, {});
+
+        return sendSuccessResponse(res, "Muscular endurance push-up records retrieved successfully", pushupsByDay);
     } catch (error) {
         console.error('Error getting muscular endurance push-up record:', error);
         return sendErrorResponse(res, 500, error.message);

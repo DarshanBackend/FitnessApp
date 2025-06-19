@@ -34,14 +34,35 @@ export const addCardiovascular = async (req, res) => {
 // Get a single Cardiovascular by ID
 export const getCardiovascularById = async (req, res) => {
     try {
-        // Use the validated member from middleware
-        const cardiovasculars = await CardiovascularModel.find({ memberId: req.member._id }).sort({ createdAt: -1 });
-      
+        let memberId;
+        if (!req.trainer.isAdmin) {
+            // Member: can only see their own data
+            memberId = req.trainer._id;
+        } else if (req.params.id) {
+            // Trainer: must provide memberId in params
+            if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in params");
+            }
+            memberId = req.params.id;
+        } else if (req.query.memberId) {
+            // Trainer: can also provide memberId as query param
+            if (!mongoose.Types.ObjectId.isValid(req.query.memberId)) {
+                return sendBadRequestResponse(res, "Invalid memberId format in query");
+            }
+            memberId = req.query.memberId;
+        } else {
+            // Trainer without memberId: not allowed
+            return sendBadRequestResponse(res, "Trainers must provide a memberId parameter to view a member's cardiovascular records.");
+        }
+
+        // Find all records for the member
+        const cardiovasculars = await CardiovascularModel.find({ memberId }).sort({ createdAt: -1 });
+    
         if (!cardiovasculars || cardiovasculars.length === 0) {
             return sendNotFoundResponse(res, "No cardiovascular records found for this member");
         }
 
-        // Format measurements with dates
+        // Format records with dates
         const formattedCardiovasculars = cardiovasculars.map((cardiovascular) => {
             return {
                 ...cardiovascular._doc,
@@ -49,7 +70,17 @@ export const getCardiovascularById = async (req, res) => {
             };
         });
 
-        return sendSuccessResponse(res, "Cardiovascular records retrieved successfully", formattedCardiovasculars);
+        // Group records by date
+        const cardioByDay = formattedCardiovasculars.reduce((acc, cardio) => {
+            const day = cardio.formattedDate;
+            if (!acc[day]) {
+                acc[day] = [];
+            }
+            acc[day].push(cardio);
+            return acc;
+        }, {});
+
+        return sendSuccessResponse(res, "Cardiovascular records retrieved successfully", cardioByDay);
     } catch (error) {
         console.error('Error getting cardiovascular record:', error);
         return sendErrorResponse(res, 500, error.message);
