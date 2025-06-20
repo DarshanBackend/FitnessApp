@@ -72,17 +72,7 @@ export const getFlexiblitiyById = async (req, res) => {
             };
         });
 
-        // Group records by date
-        const flexByDay = formattedFlexibilities.reduce((acc, flex) => {
-            const day = flex.formattedDate;
-            if (!acc[day]) {
-                acc[day] = [];
-            }
-            acc[day].push(flex);
-            return acc;
-        }, {});
-
-        return sendSuccessResponse(res, "Flexibility records retrieved successfully", flexByDay);
+        return sendSuccessResponse(res, "Flexibility records retrieved successfully", formattedFlexibilities);
     } catch (error) {
         console.error('Error getting flexibility record:', error);
         return sendErrorResponse(res, 500, error.message);

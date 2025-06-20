@@ -74,17 +74,9 @@ export const getvo2MaxRockPortTestById = async (req, res) => {
             };
         });
 
-        // Group records by date
-        const vo2ByDay = formattedVo2MaxRockPortTests.reduce((acc, vo2) => {
-            const day = vo2.formattedDate;
-            if (!acc[day]) {
-                acc[day] = [];
-            }
-            acc[day].push(vo2);
-            return acc;
-        }, {});
 
-        return sendSuccessResponse(res, "VO2 Max Rock Port Test records retrieved successfully", vo2ByDay);
+
+        return sendSuccessResponse(res, "VO2 Max Rock Port Test records retrieved successfully", formattedVo2MaxRockPortTests);
     } catch (error) {
         console.error('Error getting VO2 Max Rock Port Test:', error);
         return sendErrorResponse(res, 500, error.message);

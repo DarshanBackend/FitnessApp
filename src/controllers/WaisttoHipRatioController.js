@@ -59,7 +59,7 @@ export const getWaisttoHipRatioById = async (req, res) => {
 
         // Find all records for the member
         const waisttoHipRatios = await WaisttoHipRatioModel.find({ memberId }).sort({ createdAt: -1 });
-    
+
         if (!waisttoHipRatios || waisttoHipRatios.length === 0) {
             return sendNotFoundResponse(res, "No waist to hip ratio records found for this member");
         }
@@ -72,17 +72,7 @@ export const getWaisttoHipRatioById = async (req, res) => {
             };
         });
 
-        // Group records by date
-        const ratiosByDay = formattedWaisttoHipRatios.reduce((acc, ratio) => {
-            const day = ratio.formattedDate;
-            if (!acc[day]) {
-                acc[day] = [];
-            }
-            acc[day].push(ratio);
-            return acc;
-        }, {});
-
-        return sendSuccessResponse(res, "Waist to Hip Ratio records retrieved successfully", ratiosByDay);
+        return sendSuccessResponse(res, "Waist to Hip Ratio records retrieved successfully", formattedWaisttoHipRatios);
     } catch (error) {
         console.error('Error getting waist to hip ratio:', error);
         return sendErrorResponse(res, 500, error.message);
@@ -109,7 +99,7 @@ export const getAllWaisttoHipRatio = async (req, res) => {
         }
 
         const waisttoHipRatios = await WaisttoHipRatioModel.find(query).sort({ createdAt: -1 });
-    
+
         if (!waisttoHipRatios || waisttoHipRatios.length === 0) {
             return sendSuccessResponse(res, "No waist to hip ratios found", []);
         }
@@ -132,7 +122,7 @@ export const getAllWaisttoHipRatio = async (req, res) => {
 export const updateWaisttoHipRatio = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid Waist to Hip Ratio ID");
         }
@@ -163,7 +153,7 @@ export const updateWaisttoHipRatio = async (req, res) => {
 export const deleteWaisttoHipRatio = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid Waist to Hip Ratio ID");
         }

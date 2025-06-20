@@ -15,6 +15,7 @@ import flexiblitiyRouter from "./src/routes/FlexiblitiyRoutes.js";
 import dietRouter from "./src/routes/dietRoutes.js";
 import workoutRouter from "./src/routes/workoutRoutes.js";
 import leaveRouter from "./src/routes/leaveRoutes.js";
+import MemberDetailsRouter from "./src/routes/memberRoutes.js";
 dotenv.config();
 
 const port = process.env.PORT;
@@ -61,6 +62,9 @@ app.use("/api/workout", workoutRouter)
 
 //leave Router
 app.use("/api/leave", leaveRouter)
+
+//member Routes
+app.use("/api/memberDetails", MemberDetailsRouter)
 
 // Connect to Database
 connectDB();

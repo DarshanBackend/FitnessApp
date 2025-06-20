@@ -73,17 +73,7 @@ export const getMuscularEndurancePushUPById = async (req, res) => {
             };
         });
 
-        // Group records by date
-        const pushupsByDay = formattedMuscularEndurancePushUPs.reduce((acc, pushup) => {
-            const day = pushup.formattedDate;
-            if (!acc[day]) {
-                acc[day] = [];
-            }
-            acc[day].push(pushup);
-            return acc;
-        }, {});
-
-        return sendSuccessResponse(res, "Muscular endurance push-up records retrieved successfully", pushupsByDay);
+        return sendSuccessResponse(res, "Muscular endurance push-up records retrieved successfully", formattedMuscularEndurancePushUPs);
     } catch (error) {
         console.error('Error getting muscular endurance push-up record:', error);
         return sendErrorResponse(res, 500, error.message);

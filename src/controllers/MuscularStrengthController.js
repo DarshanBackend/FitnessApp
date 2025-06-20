@@ -73,17 +73,7 @@ export const getmuscularStrengthById = async (req, res) => {
             };
         });
 
-        // Group records by date
-        const strengthsByDay = formattedMuscularStrengths.reduce((acc, strength) => {
-            const day = strength.formattedDate;
-            if (!acc[day]) {
-                acc[day] = [];
-            }
-            acc[day].push(strength);
-            return acc;
-        }, {});
-
-        return sendSuccessResponse(res, "Muscular strength records retrieved successfully", strengthsByDay);
+        return sendSuccessResponse(res, "Muscular strength records retrieved successfully", formattedMuscularStrengths);
     } catch (error) {
         console.error('Error getting muscular strength record:', error);
         return sendErrorResponse(res, 500, error.message);

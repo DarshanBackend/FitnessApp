@@ -70,17 +70,7 @@ export const getCardiovascularById = async (req, res) => {
             };
         });
 
-        // Group records by date
-        const cardioByDay = formattedCardiovasculars.reduce((acc, cardio) => {
-            const day = cardio.formattedDate;
-            if (!acc[day]) {
-                acc[day] = [];
-            }
-            acc[day].push(cardio);
-            return acc;
-        }, {});
-
-        return sendSuccessResponse(res, "Cardiovascular records retrieved successfully", cardioByDay);
+        return sendSuccessResponse(res, "Cardiovascular records retrieved successfully", formattedCardiovasculars);
     } catch (error) {
         console.error('Error getting cardiovascular record:', error);
         return sendErrorResponse(res, 500, error.message);

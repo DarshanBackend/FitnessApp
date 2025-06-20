@@ -64,25 +64,13 @@ export const getMeasurementInfoById = async (req, res) => {
             return sendNotFoundResponse(res, "No measurements found for this member");
         }
 
-        // Format measurements with dates
-        const formattedMeasurements = measurements.map((measurement) => {
-            return {
-                ...measurement._doc,
-                formattedDate: dayjs(measurement.createdAt).format("DD MMM YYYY"),
-            };
-        });
+        // Format measurements with dates (flat array)
+        const formattedMeasurements = measurements.map((measurement) => ({
+            ...measurement._doc,
+            formattedDate: dayjs(measurement.createdAt).format("DD MMM YYYY"),
+        }));
 
-        // Group measurements by addedDate (date only, not time)
-        const measurementsByDay = formattedMeasurements.reduce((acc, measurement) => {
-            const day = measurement.formattedDate;
-            if (!acc[day]) {
-                acc[day] = [];
-            }
-            acc[day].push(measurement);
-            return acc;
-        }, {});
-
-        return sendSuccessResponse(res, "Measurements retrieved successfully", measurementsByDay);
+        return sendSuccessResponse(res, "Measurements retrieved successfully", formattedMeasurements);
     } catch (error) {
         console.error('Error getting measurements:', error);
         return sendErrorResponse(res, 500, error.message);

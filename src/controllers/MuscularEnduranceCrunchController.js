@@ -74,17 +74,7 @@ export const getMuscularEnduranceCrunchById = async (req, res) => {
             };
         });
 
-        // Group records by date
-        const crunchesByDay = formattedMuscularEnduranceCrunches.reduce((acc, crunch) => {
-            const day = crunch.formattedDate;
-            if (!acc[day]) {
-                acc[day] = [];
-            }
-            acc[day].push(crunch);
-            return acc;
-        }, {});
-
-        return sendSuccessResponse(res, "Muscular endurance crunch records retrieved successfully", crunchesByDay);
+        return sendSuccessResponse(res, "Muscular endurance crunch records retrieved successfully", formattedMuscularEnduranceCrunches);
     } catch (error) {
         console.error('Error getting muscular endurance crunch record:', error);
         return sendErrorResponse(res, 500, error.message);
