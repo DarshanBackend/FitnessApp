@@ -199,6 +199,7 @@ export const getMemberProfileById = async (req, res) => {
         let enrolledDate = details && details.member_startDate ? dayjs(details.member_startDate).format('DD/MM/YYYY') : "-";
         let birthDate = user.birth_date ? dayjs(user.birth_date).format('DD/MM/YYYY') : "-";
         const response = {
+            memberId: user.id || "-",
             name: user.name || "-",
             contact: user.contact || "-",
             email: user.email || "-",
