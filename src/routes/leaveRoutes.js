@@ -16,7 +16,7 @@ const leaveRouter = express.Router();
 leaveRouter.post("/addLeave", TrainerAuth, addLeave);
 
 // Both members and trainers can view leave requests
-leaveRouter.get("/getLeaveById/:id", TrainerAuth, checkMemberAccess, getLeaveById);
+leaveRouter.get("/getLeaveById/:id", TrainerAuth, getLeaveById);
 leaveRouter.get("/getAllLeave", TrainerAuth, getAllLeave);
 
 // Member can update and delete their own pending leave requests

@@ -11,14 +11,30 @@ export const addLeave = async (req, res) => {
             return sendForbiddenResponse(res, "Trainers cannot add leave requests.");
         }
 
+
         // Validate required fields
-        if (!req.body.date || !req.body.reason) {
-            return sendBadRequestResponse(res, "date and reason are required");
+        if (!req.body.from || !req.body.to || !req.body.reason) {
+            return sendBadRequestResponse(res, "from, to, and reason are required");
         }
-      
+
+        // Prevent same member from adding leave for any overlapping date range
+        const overlappingLeave = await LeaveModel.findOne({
+            memberId: req.trainer._id,
+            $or: [
+                {
+                    from: { $lte: req.body.to },
+                    to: { $gte: req.body.from }
+                }
+            ]
+        });
+        if (overlappingLeave) {
+            return sendBadRequestResponse(res, "You already have a leave applied in this date range.");
+        }
+
         // Create new leave request with status Pending
         const newLeave = new LeaveModel({
-            date: req.body.date,
+            from: req.body.from,
+            to: req.body.to,
             reason: req.body.reason,
             status: "Pending", // Default status
             memberId: req.trainer._id, // Use logged in member's ID
@@ -38,42 +54,29 @@ export const getLeaveById = async (req, res) => {
     const leaveId = req.params.id; // This is the ID from the URL parameter
  
     if (!mongoose.Types.ObjectId.isValid(leaveId)) {
-        
         return sendBadRequestResponse(res, "Invalid Leave ID");
     }
 
     try {
-        let query = { _id: leaveId };
-
-      
-        if (!req.trainer.isAdmin) {
-            query.memberId = req.trainer._id; // Ensure we query for leaves belonging to the logged-in member
-          
-        }
-
-       
-        // Populate member information only for trainers
-        let leave;
-        if (req.trainer.isAdmin) {
-            leave = await LeaveModel.findOne(query).populate('memberId', 'name email contact');
-        } else {
-            leave = await LeaveModel.findOne(query);
-        }
-    
+        // Find the leave and populate member info
+        let leave = await LeaveModel.findById(leaveId).populate('memberId', 'name email contact');
 
         if (!leave) {
-    
-            return sendNotFoundResponse(res, "Leave request not found or you do not have permission to view it.");
+            return sendNotFoundResponse(res, "Leave request not found.");
         }
 
-        // Format the response with member information for trainers
+        // Only allow the member who owns the leave or an admin to view
+        if (!req.trainer.isAdmin && leave.memberId && leave.memberId._id.toString() !== req.trainer._id.toString()) {
+            return sendForbiddenResponse(res, "Access denied. You can only view your own leave requests.");
+        }
+
+        // Format the response with member information
         const formattedLeave = {
             ...leave._doc,
-            formattedDate: dayjs(leave.date).format("DD MMM YYYY"),
+            formattedFrom: dayjs(leave.from).format("DD MMM YYYY"),
+            formattedTo: dayjs(leave.to).format("DD MMM YYYY"),
         };
-        
-        // Add member information for trainers
-        if (req.trainer.isAdmin && leave.memberId) {
+        if (leave.memberId) {
             formattedLeave.memberName = leave.memberId.name;
             formattedLeave.memberEmail = leave.memberId.email;
             formattedLeave.memberContact = leave.memberId.contact;
@@ -94,9 +97,7 @@ export const getAllLeave = async (req, res) => {
             // Members can only view their own leaves
             query.memberId = req.trainer._id;
          
-        } else {
-       
-        }
+        } 
         
         // Populate member information only for trainers
         let leaves;
@@ -114,7 +115,8 @@ export const getAllLeave = async (req, res) => {
         const formattedLeaves = leaves.map((leave) => {
             const formattedLeave = {
                 ...leave._doc,
-                formattedDate: dayjs(leave.date).format("DD MMM YYYY"),
+                formattedFrom: dayjs(leave.from).format("DD MMM YYYY"),
+                formattedTo: dayjs(leave.to).format("DD MMM YYYY"),
             };
             
             // Add member information for trainers
@@ -153,9 +155,15 @@ export const updateLeave = async (req, res) => {
             return sendBadRequestResponse(res, "Only pending leave requests can be updated.");
         }
 
+        // Only allow updating from, to, and reason fields
+        const updateFields = {};
+        if (req.body.from) updateFields.from = req.body.from;
+        if (req.body.to) updateFields.to = req.body.to;
+        if (req.body.reason) updateFields.reason = req.body.reason;
+
         const updatedLeave = await LeaveModel.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateFields,
             { new: true, runValidators: true }
         );
         return sendSuccessResponse(res, "Leave request updated successfully", updatedLeave);
@@ -219,7 +227,8 @@ export const updateLeaveStatus = async (req, res) => {
             memberName: leave.memberId.name,
             memberEmail: leave.memberId.email,
             memberContact: leave.memberId.contact,
-            formattedDate: dayjs(leave.date).format("DD MMM YYYY"),
+            formattedFrom: dayjs(leave.from).format("DD MMM YYYY"),
+            formattedTo: dayjs(leave.to).format("DD MMM YYYY"),
         };
 
         return sendSuccessResponse(res, `Leave status updated to ${status} for member ${leave.memberId.name}`, formattedLeave);

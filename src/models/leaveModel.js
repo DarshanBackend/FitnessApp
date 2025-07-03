@@ -6,8 +6,13 @@ const leaveSchema = new mongoose.Schema({
         ref: 'Register',
         required: true
     },
-    date: {
+    from: {
         type: Date,
+        required: true,
+    },
+    to: {
+        type: Date,
+        
         required: true,
     },
     reason: {
